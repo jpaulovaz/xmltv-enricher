@@ -1,0 +1,36 @@
+{
+  "name": "xmltv-enricher",
+  "version": "1.0.0",
+  "description": "Enriquecedor de XML XMLTV com dados de TVDb, TMDb e OMDb",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop xmltv-enricher",
+    "pm2:restart": "pm2 restart xmltv-enricher",
+    "pm2:delete": "pm2 delete xmltv-enricher",
+    "pm2:logs": "pm2 logs xmltv-enricher",
+    "pm2:status": "pm2 status"
+  },
+  "keywords": [
+    "xmltv",
+    "plex",
+    "tvheadend",
+    "enricher"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "xml2js": "^0.6.0",
+    "node-cron": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "winston": "^3.8.0",
+    "sqlite3": "^5.1.6",
+    "string-similarity": "^4.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
