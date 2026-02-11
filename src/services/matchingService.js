@@ -13,7 +13,11 @@ class MatchingService {
     this.cacheService = args[args.length - 1];
     const config = args[args.length - 2];
     this.apis = args.slice(0, -2).filter(api => api !== null);
-    this.fuzzyMatcher = new FuzzyMatcher(config.matching.algorithm, config.matching.confidenceThreshold);
+
+    this.fuzzyMatcher = new FuzzyMatcher(
+      config.matching.algorithm,
+      config.matching.confidenceThreshold
+    );
     this.threshold = config.matching.confidenceThreshold;
     this.auditLog = [];
     this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
@@ -21,20 +25,21 @@ class MatchingService {
 
   async enrichProgram(programme, placeholderImageUrl) {
     const originalTitle = programme.title?.[0] || 'Unknown';
-    const yearToSearch = extractYearFromTitle(originalTitle);
+    const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
 
-    // Geramos todas as variações de uma vez
+    // Gera lista de tentativas de limpeza
     const titlesToTry = [
-      cleanTitle,
-      cleanSeriesInfo(cleanTitle),
-      cleanTitle.split(':')[0].trim()
-    ].filter((v, i, a) => v && v.length > 0 && a.indexOf(v) === i);
+      cleanTitle,                             // 1. Título Limpo (ex: "Velozes e Furiosos 8")
+      cleanSeriesInfo(cleanTitle),            // 2. Sem Temporada/Episódio (ex: "Ph Explica")
+      cleanTitle.split(':')[0].trim(),        // 3. Antes dos dois pontos (ex: "Cine Gloob")
+      cleanTitle.replace(/\s(E|&)\s/g, ' ')   // 4. Truque: Remove conectivos para ajudar no fuzzy (ex: "Velozes Furiosos")
+    ].filter((v, i, a) => v && v.length > 1 && a.indexOf(v) === i);
 
-    // --- FASE 1: VELOCIDADE MÁXIMA (TESTAR CACHE PARA TODAS AS VARIAÇÕES) ---
+    // --- FASE 1: CACHE (RÁPIDO) ---
     for (const title of titlesToTry) {
       try {
-        const cached = this.cacheService.get(title, yearToSearch);
+        const cached = this.cacheService.get(title, yearFromTitle);
         if (cached) {
           logger.info(`✓ Encontrado em cache: "${title}"`);
           this._addToAudit(originalTitle, title, 'Cache', 100, cached.title);
@@ -43,7 +48,7 @@ class MatchingService {
       } catch (e) { }
     }
 
-    // --- FASE 2: BUSCA EXTERNA (SÓ SE O CACHE FALHAR EM TUDO) ---
+    // --- FASE 2: APIS ---
     let bestEnriched = null;
     let bestScore = 0;
     let usedTitle = '-';
@@ -53,31 +58,46 @@ class MatchingService {
       for (const api of this.apis) {
         try {
           if (api.constructor.name === 'TVDbAPI') await api.authenticate();
-          const enriched = await api.enrichProgram(titleToTry, yearToSearch || null);
 
-          if (enriched) {
-            const score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
-            if (score >= this.threshold && score > bestScore) {
-              bestScore = score;
-              bestEnriched = enriched;
-              usedTitle = titleToTry;
-              finalSource = enriched.source;
-              if (bestScore >= 95) break;
+          // Tenta com o ano extraído (se houver) e sem ano como fallback
+          const yearsToTry = yearFromTitle ? [yearFromTitle, null] : [null];
+
+          for (const yearAttempt of yearsToTry) {
+            const enriched = await api.enrichProgram(titleToTry, yearAttempt);
+
+            if (enriched) {
+              const score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
+
+              // Log de Debug para entender por que falha (se necessário ativar LOG_LEVEL=debug)
+              logger.debug(`Match Check: Busca="${titleToTry}" Resultado="${enriched.title}" Score=${score}%`);
+
+              if (score >= this.threshold && score > bestScore) {
+                bestScore = score;
+                bestEnriched = enriched;
+                usedTitle = titleToTry;
+                finalSource = enriched.source;
+
+                // Se achou um match quase perfeito, para tudo e usa
+                if (bestScore >= 95) break;
+              }
             }
           }
         } catch (e) { }
+        if (bestScore >= 95) break;
       }
       if (bestScore >= 95) break;
     }
 
+    // --- RESULTADO FINAL ---
     if (bestEnriched) {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
-      this.cacheService.set(usedTitle, yearToSearch, bestEnriched);
+      this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
       this._addToAudit(originalTitle, usedTitle, finalSource, bestScore, bestEnriched.title);
       this.saveAuditCSV();
       return this._applyEnrichment(programme, bestEnriched, placeholderImageUrl);
     }
 
+    // Falha
     logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"`);
     this._addToAudit(originalTitle, cleanTitle, '-', 0, 'NADA ENCONTRADO');
     this.saveAuditCSV();
@@ -86,6 +106,9 @@ class MatchingService {
 
   _addToAudit(original, search, source, confidence, resultTitle) {
     const status = confidence >= this.threshold ? '✅ OK' : '❌ NADA';
+    // Limita o tamanho do log em memória para evitar estouro
+    if (this.auditLog.length > 2000) this.auditLog.shift();
+
     this.auditLog.push({
       original: original.replace(/;/g, ','),
       search: search.replace(/;/g, ','),
@@ -98,9 +121,10 @@ class MatchingService {
 
   saveAuditCSV() {
     try {
-      if (this.auditLog.length % 50 === 0) { // Salva o CSV a cada 50 itens para não pesar o disco toda hora
+      // Salva em lote para performance (a cada 20 itens processados)
+      if (this.auditLog.length % 20 === 0) {
         let csv = "\ufeffTítulo Original;Busca;Status;Confiança;Resultado API;Fonte\n";
-        this.auditLog.slice(-1000).forEach(row => {
+        this.auditLog.forEach(row => {
           csv += `"${row.original}";"${row.search}";${row.status};${row.confidence};"${row.result}";${row.source}\n`;
         });
         fs.writeFileSync(this.auditFilePath, csv, 'utf-8');
@@ -113,6 +137,7 @@ class MatchingService {
     prog.icon = [{ $: { src: data.image || placeholder } }];
     if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: 'pt-BR' } }));
     if (data.year) prog.date = [data.year.toString()];
+    if (data.rating) prog.rating = [{ value: [data.rating], $: { system: 'BR' } }];
     return prog;
   }
 
