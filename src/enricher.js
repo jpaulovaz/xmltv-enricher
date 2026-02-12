@@ -48,7 +48,6 @@ class Enricher {
     try {
       logger.info('Iniciando processo de enriquecimento...');
 
-      // 1. INICIALIZAÇÃO DE APIs (NOVIDADE: Prepara o banco 1 vez só)
       logger.info('Inicializando conexões de API...');
       for (const api of this.matchingService.apis) {
         if (api.initialize) {
@@ -56,11 +55,11 @@ class Enricher {
         }
       }
 
-      // 2. Baixar/Ler XML
+      // 1. Baixar/Ler XML
       const xmlData = await xmlParser.fetchXml(this.config.tvheadend);
       logger.info(`XML baixado com sucesso (${xmlData.length} bytes)`);
 
-      // 3. Parse XML
+      // 2. Parse XML
       const result = await xmlParser.parseXml(xmlData);
       const programmes = result.tv.programme;
 
@@ -69,9 +68,24 @@ class Enricher {
         return;
       }
 
+      // --- NOVIDADE: Mapear ID do Canal -> Nome do Canal ---
+      const channelMap = {};
+      if (result.tv.channel) {
+        result.tv.channel.forEach(c => {
+          if (c.$ && c.$.id && c['display-name']) {
+            // display-name pode ser array ou objeto dependendo do parser
+            const dn = c['display-name'][0];
+            const name = (typeof dn === 'object' && dn._) ? dn._ : dn;
+            channelMap[c.$.id] = name;
+          }
+        });
+        logger.info(`Mapeados ${Object.keys(channelMap).length} canais.`);
+      }
+      // -----------------------------------------------------
+
       logger.info(`Total de programas a enriquecer: ${programmes.length}`);
 
-      // 4. Enriquecimento (Lotes)
+      // 3. Enriquecimento
       const enrichedProgrammes = [];
       const total = programmes.length;
       const batchSize = this.config.processing.concurrency || 1;
@@ -81,9 +95,14 @@ class Enricher {
       for (let i = 0; i < total; i += batchSize) {
         const batch = programmes.slice(i, i + batchSize);
 
-        const batchPromises = batch.map(prog =>
-          this.matchingService.enrichProgram(prog, this.config.output.placeholderImage)
-        );
+        const batchPromises = batch.map(prog => {
+          // Descobre o nome do canal deste programa
+          const channelId = prog.$ ? prog.$.channel : null;
+          const channelName = channelMap[channelId] || channelId || 'Desconhecido';
+
+          // Passa o channelName como 3º argumento
+          return this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
+        });
 
         const batchResults = await Promise.all(batchPromises);
         enrichedProgrammes.push(...batchResults);
@@ -94,12 +113,12 @@ class Enricher {
         }
       }
 
-      // 5. Reconstruir XML
+      // 4. Reconstruir XML
       result.tv.programme = enrichedProgrammes;
       const builder = new (require('xml2js').Builder)();
       const newXml = builder.buildObject(result);
 
-      // 6. Salvar
+      // 5. Salvar
       const fs = require('fs');
       fs.writeFileSync(this.config.output.path, newXml);
       logger.info(`Arquivo XML salvo em: ${this.config.output.path}`);
@@ -108,7 +127,6 @@ class Enricher {
       logger.error(`Erro durante execução: ${error.message}`);
       if (error.stack) logger.debug(error.stack);
     } finally {
-      // 7. LIMPEZA FINAL (NOVIDADE: Fecha o banco e apaga o arquivo)
       logger.info('Encerrando conexões...');
       if (this.matchingService && this.matchingService.apis) {
         for (const api of this.matchingService.apis) {

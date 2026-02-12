@@ -2,7 +2,9 @@ const logger = require('../utils/logger');
 const {
   extractCleanTitle,
   cleanSeriesInfo,
-  extractYearFromTitle
+  extractYearFromTitle,
+  parseEpisodeInfo,
+  convertToXmltvNs
 } = require('../utils/helpers');
 const FuzzyMatcher = require('../utils/fuzzyMatcher');
 const fs = require('fs');
@@ -20,15 +22,16 @@ class MatchingService {
     );
     this.threshold = config.matching.confidenceThreshold;
 
-    // AUDITORIA EM STREAM (Item 5)
     this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
+    // NOVIDADE: Adicionado "Canal" no cabeçalho
     if (!fs.existsSync(this.auditFilePath)) {
-      fs.writeFileSync(this.auditFilePath, "\ufeffTítulo Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
+      fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     }
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
   }
 
-  async enrichProgram(programme, placeholderImageUrl) {
+  // NOVIDADE: Recebe channelName (com valor padrão '-')
+  async enrichProgram(programme, placeholderImageUrl, channelName = '-') {
     const originalTitle = programme.title?.[0] || 'Unknown';
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
@@ -41,14 +44,15 @@ class MatchingService {
 
     const titlesToSkipApi = new Set();
 
-    // FASE 1: CACHE (Agora com AWAIT pois é SQLite)
+    // FASE 1: CACHE
     for (const title of titlesToTry) {
       try {
         const cached = await this.cacheService.get(title, yearFromTitle);
         if (cached) {
           if (!cached.notFound) {
             logger.info(`✓ Encontrado em cache: "${title}"`);
-            this._writeToAudit(originalTitle, title, 'Cache', 100, cached.title);
+            // Passa o canal para o log
+            this._writeToAudit(channelName, originalTitle, title, 'Cache', 100, cached.title);
             return this._applyEnrichment(programme, cached, placeholderImageUrl);
           } else {
             titlesToSkipApi.add(title);
@@ -70,7 +74,9 @@ class MatchingService {
 
       for (const api of this.apis) {
         try {
+          if (api.initialize) await api.initialize();
           if (api.constructor.name === 'TVDbAPI') await api.authenticate();
+
           const yearsToTry = yearFromTitle ? [yearFromTitle, null] : [null];
 
           for (const yearAttempt of yearsToTry) {
@@ -78,7 +84,6 @@ class MatchingService {
 
             if (enriched) {
               let score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
-
               if (score < this.threshold && score > 40 && !yearAttempt) score += 20;
 
               if (score >= this.threshold && score > bestScore) {
@@ -104,36 +109,54 @@ class MatchingService {
     if (bestEnriched) {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
-      this._writeToAudit(originalTitle, usedTitle, finalSource, bestScore, bestEnriched.title);
+      this._writeToAudit(channelName, originalTitle, usedTitle, finalSource, bestScore, bestEnriched.title);
       return this._applyEnrichment(programme, bestEnriched, placeholderImageUrl);
     }
 
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
     logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"${statusMsg}`);
 
-    this._writeToAudit(originalTitle, cleanTitle, '-', 0, 'NADA ENCONTRADO');
-    return this._applyPlaceholder(programme, placeholderImageUrl);
+    this._writeToAudit(channelName, originalTitle, cleanTitle, '-', 0, 'NADA ENCONTRADO');
+
+    return this._applySmartPlaceholder(programme, placeholderImageUrl);
   }
 
-  _writeToAudit(original, search, source, confidence, resultTitle) {
+  // NOVIDADE: Grava a coluna "Canal" no CSV
+  _writeToAudit(channel, original, search, source, confidence, resultTitle) {
     const status = (typeof confidence === 'string' ? parseFloat(confidence) : confidence) >= this.threshold || confidence === 100 ? '✅ OK' : '❌ NADA';
-    const line = `"${original.replace(/;/g, ',')}";"${search.replace(/;/g, ',')}";${status};${confidence}%;"${resultTitle ? resultTitle.replace(/;/g, ',') : '-'}";${source}\n`;
+    // Adicionei ${channel} no início
+    const line = `"${channel}";"${original.replace(/;/g, ',')}";"${search.replace(/;/g, ',')}";${status};${confidence}%;"${resultTitle ? resultTitle.replace(/;/g, ',') : '-'}";${source}\n`;
     this.auditStream.write(line);
   }
 
-  saveAuditCSV() { } // Método legado mantido vazio
+  saveAuditCSV() { }
 
   _applyEnrichment(programme, data, placeholder) {
     const prog = { ...programme };
     prog.icon = [{ $: { src: data.image || placeholder } }];
     if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: 'pt-BR' } }));
     if (data.year) prog.date = [data.year.toString()];
+
+    const epInfo = parseEpisodeInfo(programme.title?.[0]);
+    if (epInfo) {
+      prog['episode-num'] = [{ _: convertToXmltvNs(epInfo.season, epInfo.episode), $: { system: 'xmltv_ns' } }];
+    }
+
     return prog;
   }
 
-  _applyPlaceholder(programme, placeholder) {
+  _applySmartPlaceholder(programme, staticPlaceholder) {
     const prog = { ...programme };
-    prog.icon = [{ $: { src: placeholder } }];
+    const originalTitle = programme.title?.[0] || 'Unknown';
+
+    const epInfo = parseEpisodeInfo(originalTitle);
+
+    if (epInfo) {
+      prog['episode-num'] = [{ _: convertToXmltvNs(epInfo.season, epInfo.episode), $: { system: 'xmltv_ns' } }];
+    }
+
+    prog.icon = [{ $: { src: staticPlaceholder } }];
+
     return prog;
   }
 }
