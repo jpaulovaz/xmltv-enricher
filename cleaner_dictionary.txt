@@ -44,3 +44,20 @@ Cine Aventura
 Cine Família
 Super Tela
 Top Cine
+
+# -- Novos Prefixos Identificados (Auditoria Fev/26) --
+Curta In Box
+Curta in Box
+Curtas Do Off
+Curtas do Off
+Curta no Almoço
+Arte 1
+Arte 1 Em Movimento
+Arte 1 Apresenta
+Estreia
+Pré-Estreia
+Ao Vivo
+Vivo
+Reapresentação
+Maratona
+Especial

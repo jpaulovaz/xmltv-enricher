@@ -9,6 +9,7 @@ const TVDbAPI = require('./apis/tvdb');
 const OMDbAPI = require('./apis/omdb');
 const PlexAPI = require('./apis/plex');
 const PlexDBAPI = require('./apis/plexdb');
+const IMDbAPI = require('./apis/imdb');
 
 class Enricher {
   constructor(config) {
@@ -33,6 +34,9 @@ class Enricher {
           break;
         case 'omdb':
           if (config.api.omdb.key) apis.push(new OMDbAPI(config.api.omdb.key));
+          break;
+        case 'imdb':
+          if (config.api.imdb.enabled) apis.push(new IMDbAPI());
           break;
       }
     });

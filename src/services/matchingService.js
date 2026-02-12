@@ -36,10 +36,18 @@ class MatchingService {
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
 
+    // Regex para proteger hífen (Homem-Aranha) mas permitir quebra em parênteses
+    const splitRegexHyphen = /(\s+[-–]\s+|\s*\()/;
+
+    // NOVO: Regex específico para quebrar em DOIS PONTOS (Resolve Chicago Fire: Ambição)
+    const splitRegexColon = /\s*:\s*/;
+
     const titlesToTry = [
-      cleanTitle,
-      cleanSeriesInfo(cleanTitle),
-      cleanTitle.split(/[:\-(]/)[0].trim()
+      cleanTitle, // Tenta: "Chicago Fire: Ambição" (Falha)
+      cleanSeriesInfo(cleanTitle), // Tenta: "Chicago Fire: Ambição" (Falha)
+      cleanTitle.split(splitRegexHyphen)[0].trim(), // Tenta quebra de hífen
+      // AQUI ESTÁ A MÁGICA PARA AS SÉRIES:
+      cleanTitle.split(splitRegexColon)[0].trim() // Tenta: "Chicago Fire" (SUCESSO!)
     ].filter((v, i, a) => v && v.length > 1 && a.indexOf(v) === i);
 
     const titlesToSkipApi = new Set();

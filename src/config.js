@@ -16,6 +16,7 @@ module.exports = {
     tmdb: { key: process.env.TMDB_API_KEY },
     tvdb: { key: process.env.TVDB_API_KEY, pin: process.env.TVDB_PIN },
     omdb: { key: process.env.OMDB_API_KEY },
+    imdb: { enabled: process.env.IMDB_ENABLED === 'true' },
     plex: {
       url: process.env.PLEX_URL || 'http://localhost:32400',
       token: process.env.PLEX_TOKEN,
