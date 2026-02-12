@@ -1,0 +1,46 @@
+# Dicionário de Prefixos para Limpeza de Títulos
+# O sistema removerá estas palavras se aparecerem no INÍCIO do título.
+# Não se preocupe com maiúsculas/minúsculas.
+# Linhas começando com # são comentários.
+
+# -- Categorias Genéricas (Antigas) --
+FILME
+SERIE
+SÉRIE
+CINE
+DOC
+DESENHO
+NOVELA
+VISAO
+VISÃO
+PROGRAMAÇÃO
+MISSA
+TERÇO
+EPISODIO
+EPISÓDIO
+
+# -- Sessões de TV (Novas - Auditoria) --
+Sessão da Tarde
+Sessão de Gala
+Sessão Superestreia
+Sessão Aventura
+Sessão Pipoca
+Sessão Especial
+Supercine
+Tela Quente
+Tela Máxima
+Tela de Sucessos
+Domingo Maior
+Domingo Legal
+Corujão
+Cinema Especial
+Cinema em Casa
+Cinemasso
+Campeões de Bilheteria
+Temperatura Máxima
+Festival de Sucessos
+Cine Espetacular
+Cine Aventura
+Cine Família
+Super Tela
+Top Cine

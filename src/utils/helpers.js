@@ -1,3 +1,33 @@
+const fs = require('fs');
+const path = require('path');
+
+// --- CARREGAMENTO DO DICIONÁRIO ---
+let dictionaryRegex = null;
+
+try {
+  const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+  if (fs.existsSync(dictPath)) {
+    const lines = fs.readFileSync(dictPath, 'utf-8')
+      .split('\n')
+      .map(line => line.trim())
+      // Remove comentários (#) e linhas vazias
+      .filter(line => line.length > 0 && !line.startsWith('#'))
+      // Escapa caracteres especiais de regex para evitar erros
+      .map(line => line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    if (lines.length > 0) {
+      // Cria um Regex gigante: ^(Palavra1|Palavra2|...)(:|\s)+
+      // Isso busca qualquer uma das palavras no INÍCIO, seguida de dois pontos ou espaço
+      dictionaryRegex = new RegExp(`^(${lines.join('|')})[:\\s]+`, 'i');
+      // console.log('Dicionário de limpeza carregado com sucesso.'); // (Opcional, comentado para não poluir log)
+    }
+  }
+} catch (error) {
+  console.error(`Aviso: Não foi possível carregar cleaner_dictionary.txt: ${error.message}`);
+}
+
+// ----------------------------------
+
 const normalizeTitle = (title) => {
   if (!title) return '';
   return title
@@ -23,10 +53,31 @@ const extractYearFromTitle = (title) => {
 
 const extractCleanTitle = (title) => {
   if (!title) return '';
+
+  // 1. Remove aspas
   let cleaned = title.replace(/^["']|["']$/g, '').trim();
-  const categoryPrefix = /^(FILME|SERIE|SÉRIE|CINE|DOC|DESENHO|NOVELA|VISAO|VISÃO|PROGRAMAÇÃO|MISSA|TERÇO|EPISODIO|EPISÓDIO):\s*/i;
-  cleaned = cleaned.replace(categoryPrefix, '');
+
+  // 2. Aplica o DICIONÁRIO (Remove prefixos indesejados)
+  if (dictionaryRegex) {
+    cleaned = cleaned.replace(dictionaryRegex, '');
+  } else {
+    // Fallback: Se o arquivo não existir, usa o básico hardcoded (segurança)
+    const fallbackPrefix = /^(FILME|SERIE|SÉRIE|EPISODIO|EPISÓDIO):\s*/i;
+    cleaned = cleaned.replace(fallbackPrefix, '');
+  }
+
+  // 3. Remove sufixos técnicos (HD, FHD, 4K, Dublado...)
   cleaned = cleaned.replace(/\s(\(?(HD|FHD|4K|3D|Dublado|Legendado)\)?)$/i, '');
+
+  // 4. CORREÇÃO DO HÍFEN (Ajuste Crítico da Auditoria)
+  // ANTES: Cortava em qualquer hifen (-). Ex: "Homem-Aranha" virava "Homem".
+  // AGORA: Corta apenas se tiver espaço antes OU for parenteses.
+  // Ex: "Homem-Aranha" -> Mantém "Homem-Aranha"
+  // Ex: "Matrix - O Filme" -> Vira "Matrix"
+  // Ex: "Batman (1989)" -> Vira "Batman"
+  const splitRegex = /(\s+[-–]\s+|\s*\()/;
+  cleaned = cleaned.split(splitRegex)[0];
+
   return cleaned.trim();
 };
 
@@ -37,11 +88,9 @@ const cleanSeriesInfo = (title) => {
     .trim();
 };
 
-// --- NOVIDADE: Extração de Metadados Local ---
 const parseEpisodeInfo = (title) => {
   if (!title) return null;
 
-  // Regex poderoso para pegar "S01 E02", "1ª Temp Ep 10", "Ep. 20"
   const regexes = [
     /(?:S|Temp\.?|Temporada)\s*(\d{1,2})(?:[ªºa])?.*(?:E|Ep\.?|Epis[oó]dio)\s*(\d{1,3})/i,
     /(?:Ep\.?|Epis[oó]dio|Cap\.?|Cap[ií]tulo)\s*(\d{1,4})/i
@@ -51,13 +100,11 @@ const parseEpisodeInfo = (title) => {
     const match = title.match(regex);
     if (match) {
       if (match.length === 3) {
-        // Tem Temporada e Episódio
         return {
           season: parseInt(match[1], 10),
           episode: parseInt(match[2], 10)
         };
       } else if (match.length === 2) {
-        // Só tem Episódio (assume Season 1)
         return {
           season: 1,
           episode: parseInt(match[1], 10)
@@ -69,7 +116,6 @@ const parseEpisodeInfo = (title) => {
 };
 
 const convertToXmltvNs = (season, episode) => {
-  // O formato xmltv_ns é chato: "S-1 . E-1 ." (Base zero)
   const s = season > 0 ? season - 1 : 0;
   const e = episode > 0 ? episode - 1 : 0;
   return `${s}.${e}.`;
@@ -81,6 +127,6 @@ module.exports = {
   extractYearFromTitle,
   extractCleanTitle,
   cleanSeriesInfo,
-  parseEpisodeInfo, // Exportando novo
-  convertToXmltvNs  // Exportando novo
+  parseEpisodeInfo,
+  convertToXmltvNs
 };
