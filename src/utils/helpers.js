@@ -83,8 +83,13 @@ const extractCleanTitle = (title) => {
 
 const cleanSeriesInfo = (title) => {
   if (!title) return '';
+
+  // Regex Turbinado:
+  // 1. Procura separadores como " - ", " : " ou espaço
+  // 2. Procura indicadores de temporada/episódio (T1, S01, Ep, Cap, Temp)
+  // 3. Corta tudo dali pra frente.
   return title
-    .replace(/(?:\s*[-–]\s*|\s+)(?:(?:\d{1,2}[ªºa]?\s*)?(?:Temp(?:orada|\.)?|T\d+)|(?:Ep(?:is[oó]dio|\.)?\s*\d+)|(?:S\d+E\d+)|(?:Cap(?:[ií]tulo|\.)?\s*\d+)).*$/i, '')
+    .replace(/(?:\s+(?:[-–:]\s+)?)(?:(?:\d{1,2}[ªºa]?\s*)?(?:Temp(?:orada|\.)?|T\d+)|(?:Ep(?:is[oó]dio|\.)?\s*\d+)|(?:S\d+E\d+)|(?:Cap(?:[ií]tulo|\.)?\s*\d+)).*$/i, '')
     .trim();
 };
 
