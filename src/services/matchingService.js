@@ -23,33 +23,27 @@ class MatchingService {
     this.threshold = config.matching.confidenceThreshold;
 
     this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
-    // Verifica se o arquivo existe, senão cria com cabeçalho
+    // Verifica se existe, senão cria com cabeçalho
     if (!fs.existsSync(this.auditFilePath)) {
       fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     }
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
   }
 
-  // Método principal de enriquecimento
   async enrichProgram(programme, placeholderImageUrl, channelName = '-') {
     const originalTitle = programme.title?.[0] || 'Unknown';
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
 
-    // --- MUDANÇA 1: Estratégia de Criação de Títulos ---
-
-    // Regex para proteger hífen (Homem-Aranha) mas permitir quebra em parênteses
+    // --- ESTRATÉGIA DE NOMES (Mantendo as correções de hífen e dois pontos) ---
     const splitRegexHyphen = /(\s+[-–]\s+|\s*\()/;
-
-    // NOVO: Regex específico para quebrar em DOIS PONTOS (Resolve Chicago Fire: Ambição)
     const splitRegexColon = /\s*:\s*/;
 
     const titlesToTry = [
-      cleanTitle, // Tenta: "Chicago Fire: Ambição" (Falha)
-      cleanSeriesInfo(cleanTitle), // Tenta: "Chicago Fire: Ambição" (Falha)
-      cleanTitle.split(splitRegexHyphen)[0].trim(), // Tenta quebra de hífen
-      // AQUI ESTÁ A MÁGICA PARA AS SÉRIES:
-      cleanTitle.split(splitRegexColon)[0].trim() // Tenta: "Chicago Fire" (SUCESSO!)
+      cleanTitle,
+      cleanSeriesInfo(cleanTitle),
+      cleanTitle.split(splitRegexHyphen)[0].trim(),
+      cleanTitle.split(splitRegexColon)[0].trim()
     ].filter((v, i, a) => v && v.length > 1 && a.indexOf(v) === i);
 
     const titlesToSkipApi = new Set();
@@ -61,7 +55,6 @@ class MatchingService {
         if (cached) {
           if (!cached.notFound) {
             logger.info(`✓ Encontrado em cache: "${title}"`);
-            // Passa o canal para o log
             this._writeToAudit(channelName, originalTitle, title, 100, cached.title, 'Cache');
             return this._applyEnrichment(programme, cached, placeholderImageUrl);
           } else {
@@ -96,71 +89,84 @@ class MatchingService {
               let score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
               if (score < this.threshold && score > 40 && !yearAttempt) score += 20;
 
-              if (score >= this.threshold && score > bestScore) {
+              // --- CORREÇÃO AQUI ---
+              // Antes: if (score >= this.threshold && score > bestScore)
+              // Agora: if (score > bestScore) -> Guarda o melhor mesmo se for ruim (para auditar depois)
+              if (score > bestScore) {
                 bestScore = score;
                 bestEnriched = enriched;
                 usedTitle = titleToTry;
                 finalSource = enriched.source;
-                foundForThisTitle = true;
-                if (bestScore >= 95) break;
+                // Não marcamos foundForThisTitle=true aqui ainda para não bloquear o cache negativo se for ruim
               }
+
+              // Se achou um EXCELENTE, aí sim para tudo
+              if (bestScore >= 95) break;
             }
           }
         } catch (e) { }
         if (bestScore >= 95) break;
       }
 
-      if (!foundForThisTitle && !bestEnriched) {
-        try { this.cacheService.set(titleToTry, yearFromTitle, { notFound: true }); } catch (e) { }
+      // Se não achou NADA (nem ruim) ou achou algo muito ruim para este título específico, marcamos para não tentar de novo na mesma rodada
+      if (!bestEnriched) {
+        // Lógica simplificada: Cache negativo só é salvo no final se realmente falhar tudo
       }
       if (bestScore >= 95) break;
     }
 
-    // --- MUDANÇA 2: Lógica de Gravação na Auditoria ---
+    // FASE 3: DECISÃO FINAL (APROVAR OU REPROVAR)
 
-    if (bestEnriched) {
-      // SUCESSO: Gravamos o vencedor
+    // CASO 1: SUCESSO (Atingiu o Threshold)
+    if (bestEnriched && bestScore >= this.threshold) {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
       this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource);
       return this._applyEnrichment(programme, bestEnriched, placeholderImageUrl);
     }
 
-    // FRACASSO: Mas agora vamos contar a história completa (REJEITADO vs NADA)
+    // CASO 2: FRACASSO (Mas temos dados para mostrar o "porquê")
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
     logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"${statusMsg}`);
 
-    // Se houve alguma tentativa com score > 0 (mesmo que baixo), gravamos como REJEITADO.
+    // Cache Negativo: Se tentamos e o melhor que conseguimos foi ruim, salvamos cache negativo para não gastar API na próxima
+    // (Opcional: você pode comentar essa linha se quiser que ele continue tentando sempre os rejeitados)
+    try {
+      if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true });
+    } catch (e) { }
+
     if (bestScore > 0) {
-      // Grava a melhor tentativa, mesmo que tenha falhado
+      // REJEITADO: Achou algo, mas a nota foi baixa
       const tentativaTitulo = bestEnriched ? bestEnriched.title : "Tentativa Falha";
       const fonteTentativa = finalSource !== '-' ? finalSource : 'Desconhecida';
       this._writeToAudit(channelName, originalTitle, usedTitle !== '-' ? usedTitle : cleanTitle, bestScore, tentativaTitulo, fonteTentativa);
     } else {
-      // Se score for 0, é NADA ENCONTRADO mesmo
+      // NADA: Realmente a API não devolveu nada (ou deu erro)
       this._writeToAudit(channelName, originalTitle, cleanTitle, 0, 'NADA ENCONTRADO', '-');
     }
 
     return this._applySmartPlaceholder(programme, placeholderImageUrl);
   }
 
-  // Grava a linha no CSV
+  // --- GRAVAÇÃO NO CSV (Lógica de Status) ---
   _writeToAudit(channel, original, search, confidence, resultTitle, source) {
     const numericScore = (typeof confidence === 'string' ? parseFloat(confidence) : confidence);
 
-    // Define status: OK (Sucesso) ou REJEITADO (Falhou por pouco) ou NADA (Zero)
+    // Define status baseado no Threshold real
     const isSuccess = numericScore >= this.threshold || numericScore === 100;
 
-    // Se passou, é OK. Se não passou mas tem score, é REJEITADO. Se score é 0, é NADA.
     let status = '❌ NADA';
     if (isSuccess) {
       status = '✅ OK';
     } else if (numericScore > 0) {
-      status = '⚠️ REJEITADO';
+      status = '⚠️ REJEITADO'; // Agora vai aparecer!
     }
 
-    // Formata a linha do CSV
-    const line = `"${channel}";"${original.replace(/;/g, ',')}";"${search.replace(/;/g, ',')}";${status};${confidence}%;"${resultTitle ? resultTitle.replace(/;/g, ',') : '-'}";${source}\n`;
+    const safeOriginal = original ? original.replace(/;/g, ',') : '';
+    const safeSearch = search ? search.replace(/;/g, ',') : '';
+    const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
+
+    const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${safeResult}";${source}\n`;
     this.auditStream.write(line);
   }
 
@@ -177,22 +183,17 @@ class MatchingService {
     if (epInfo) {
       prog['episode-num'] = [{ _: convertToXmltvNs(epInfo.season, epInfo.episode), $: { system: 'xmltv_ns' } }];
     }
-
     return prog;
   }
 
   _applySmartPlaceholder(programme, staticPlaceholder) {
     const prog = { ...programme };
     const originalTitle = programme.title?.[0] || 'Unknown';
-
     const epInfo = parseEpisodeInfo(originalTitle);
-
     if (epInfo) {
       prog['episode-num'] = [{ _: convertToXmltvNs(epInfo.season, epInfo.episode), $: { system: 'xmltv_ns' } }];
     }
-
     prog.icon = [{ $: { src: staticPlaceholder } }];
-
     return prog;
   }
 }
