@@ -19,8 +19,13 @@ class MatchingService {
       config.matching.confidenceThreshold
     );
     this.threshold = config.matching.confidenceThreshold;
-    this.auditLog = [];
+
+    // AUDITORIA EM STREAM (Item 5)
     this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
+    if (!fs.existsSync(this.auditFilePath)) {
+      fs.writeFileSync(this.auditFilePath, "\ufeffTítulo Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
+    }
+    this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
   }
 
   async enrichProgram(programme, placeholderImageUrl) {
@@ -28,52 +33,44 @@ class MatchingService {
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
 
-    // Estratégia de Múltiplas Tentativas
     const titlesToTry = [
-      cleanTitle,                             // 1. Original Limpo
-      cleanSeriesInfo(cleanTitle),            // 2. Regex Inteligente
-      cleanTitle.split(/[:\-(]/)[0].trim()    // 3. Corte Agressivo
+      cleanTitle,
+      cleanSeriesInfo(cleanTitle),
+      cleanTitle.split(/[:\-(]/)[0].trim()
     ].filter((v, i, a) => v && v.length > 1 && a.indexOf(v) === i);
 
-    const titlesToSkipApi = new Set(); // Lista negra temporária para esta execução
+    const titlesToSkipApi = new Set();
 
-    // --- FASE 1: CACHE (Verificar Sucessos e Falhas conhecidas) ---
+    // FASE 1: CACHE (Agora com AWAIT pois é SQLite)
     for (const title of titlesToTry) {
       try {
-        const cached = this.cacheService.get(title, yearFromTitle);
+        const cached = await this.cacheService.get(title, yearFromTitle);
         if (cached) {
-          // Se for um sucesso salvo, retorna imediatamente
           if (!cached.notFound) {
             logger.info(`✓ Encontrado em cache: "${title}"`);
-            this._addToAudit(originalTitle, title, 'Cache', 100, cached.title);
+            this._writeToAudit(originalTitle, title, 'Cache', 100, cached.title);
             return this._applyEnrichment(programme, cached, placeholderImageUrl);
-          }
-          // Se for um cache negativo (falha conhecida), marcamos para não consultar API
-          else {
+          } else {
             titlesToSkipApi.add(title);
           }
         }
       } catch (e) { }
     }
 
-    // --- FASE 2: APIS ---
+    // FASE 2: APIS
     let bestEnriched = null;
     let bestScore = 0;
     let usedTitle = '-';
     let finalSource = '-';
 
     for (const titleToTry of titlesToTry) {
-      // Se já sabemos que esse título não existe (Cache Negativo), pulamos
-      if (titlesToSkipApi.has(titleToTry)) {
-        continue;
-      }
+      if (titlesToSkipApi.has(titleToTry)) continue;
 
       let foundForThisTitle = false;
 
       for (const api of this.apis) {
         try {
           if (api.constructor.name === 'TVDbAPI') await api.authenticate();
-
           const yearsToTry = yearFromTitle ? [yearFromTitle, null] : [null];
 
           for (const yearAttempt of yearsToTry) {
@@ -82,9 +79,7 @@ class MatchingService {
             if (enriched) {
               let score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
 
-              if (score < this.threshold && score > 40) {
-                if (!yearAttempt) score += 20;
-              }
+              if (score < this.threshold && score > 40 && !yearAttempt) score += 20;
 
               if (score >= this.threshold && score > bestScore) {
                 bestScore = score;
@@ -92,7 +87,6 @@ class MatchingService {
                 usedTitle = titleToTry;
                 finalSource = enriched.source;
                 foundForThisTitle = true;
-
                 if (bestScore >= 95) break;
               }
             }
@@ -101,69 +95,39 @@ class MatchingService {
         if (bestScore >= 95) break;
       }
 
-      // NOVIDADE: Se tentamos todas as APIs para este título específico e não achamos nada...
-      // Gravamos um CACHE NEGATIVO para não tentar de novo nos próximos episódios.
       if (!foundForThisTitle && !bestEnriched) {
-        try {
-          // Salva { notFound: true } no cache
-          this.cacheService.set(titleToTry, yearFromTitle, { notFound: true });
-          // logger.debug(`Cache Negativo criado para: "${titleToTry}"`); 
-        } catch (e) { }
+        try { this.cacheService.set(titleToTry, yearFromTitle, { notFound: true }); } catch (e) { }
       }
-
       if (bestScore >= 95) break;
     }
 
-    // Sucesso
     if (bestEnriched) {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
-      this._addToAudit(originalTitle, usedTitle, finalSource, bestScore, bestEnriched.title);
-      this.saveAuditCSV();
+      this._writeToAudit(originalTitle, usedTitle, finalSource, bestScore, bestEnriched.title);
       return this._applyEnrichment(programme, bestEnriched, placeholderImageUrl);
     }
 
-    // Falha Total
-    // Se caiu aqui, pode ser porque pulamos as APIs (cache negativo) ou porque as APIs falharam agora.
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
     logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"${statusMsg}`);
 
-    this._addToAudit(originalTitle, cleanTitle, '-', 0, 'NADA ENCONTRADO');
-    this.saveAuditCSV();
+    this._writeToAudit(originalTitle, cleanTitle, '-', 0, 'NADA ENCONTRADO');
     return this._applyPlaceholder(programme, placeholderImageUrl);
   }
 
-  _addToAudit(original, search, source, confidence, resultTitle) {
-    const status = confidence >= this.threshold ? '✅ OK' : '❌ NADA';
-    if (this.auditLog.length > 2000) this.auditLog.shift();
-    this.auditLog.push({
-      original: original.replace(/;/g, ','),
-      search: search.replace(/;/g, ','),
-      status,
-      confidence: `${confidence}%`,
-      result: resultTitle ? resultTitle.replace(/;/g, ',') : '-',
-      source
-    });
+  _writeToAudit(original, search, source, confidence, resultTitle) {
+    const status = (typeof confidence === 'string' ? parseFloat(confidence) : confidence) >= this.threshold || confidence === 100 ? '✅ OK' : '❌ NADA';
+    const line = `"${original.replace(/;/g, ',')}";"${search.replace(/;/g, ',')}";${status};${confidence}%;"${resultTitle ? resultTitle.replace(/;/g, ',') : '-'}";${source}\n`;
+    this.auditStream.write(line);
   }
 
-  saveAuditCSV() {
-    try {
-      if (this.auditLog.length % 20 === 0) {
-        let csv = "\ufeffTítulo Original;Busca;Status;Confiança;Resultado API;Fonte\n";
-        this.auditLog.forEach(row => {
-          csv += `"${row.original}";"${row.search}";${row.status};${row.confidence};"${row.result}";${row.source}\n`;
-        });
-        fs.writeFileSync(this.auditFilePath, csv, 'utf-8');
-      }
-    } catch (err) { }
-  }
+  saveAuditCSV() { } // Método legado mantido vazio
 
   _applyEnrichment(programme, data, placeholder) {
     const prog = { ...programme };
     prog.icon = [{ $: { src: data.image || placeholder } }];
     if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: 'pt-BR' } }));
     if (data.year) prog.date = [data.year.toString()];
-    if (data.rating) prog.rating = [{ value: [data.rating], $: { system: 'BR' } }];
     return prog;
   }
 

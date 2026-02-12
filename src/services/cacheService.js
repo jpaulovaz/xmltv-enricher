@@ -1,3 +1,5 @@
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 const logger = require('../utils/logger');
 const { generateCacheKey } = require('../utils/helpers');
 
@@ -5,83 +7,120 @@ class CacheService {
   constructor(config) {
     this.enabled = config.cache.enabled;
     this.ttlMs = config.cache.ttlHours * 60 * 60 * 1000;
-    this.cache = new Map();
+    this.dbPath = path.join(process.cwd(), 'cache_enricher.db');
+    this.db = null;
+
+    // Promessa que resolve quando o banco estiver pronto para uso
+    this.initPromise = Promise.resolve();
+
+    if (this.enabled) {
+      this.initPromise = this._initDb();
+    }
   }
 
-  /**
-   * Obter valor do cache
-   */
-  get(title, year) {
+  _initDb() {
+    return new Promise((resolve, reject) => {
+      this.db = new sqlite3.Database(this.dbPath, (err) => {
+        if (err) {
+          logger.error(`Cache: Erro ao abrir banco SQLite: ${err.message}`);
+          this.enabled = false;
+          resolve(); // Resolve mesmo com erro para não travar, mas desabilita cache
+        } else {
+          // Serializa as operações de criação para garantir ordem
+          this.db.serialize(() => {
+            this.db.run(`
+              CREATE TABLE IF NOT EXISTS cache (
+                key TEXT PRIMARY KEY,
+                data TEXT,
+                timestamp INTEGER
+              )
+            `);
+
+            this.db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp)`, (err) => {
+              if (err) {
+                logger.error(`Cache: Erro ao criar tabela/índice: ${err.message}`);
+              } else {
+                logger.info(`Cache persistente conectado e pronto: ${this.dbPath}`);
+              }
+              resolve(); // Só libera o uso após terminar de criar tabelas
+            });
+          });
+        }
+      });
+    });
+  }
+
+  async get(title, year) {
     if (!this.enabled) return null;
 
-    const key = generateCacheKey(title, year);
-    const entry = this.cache.get(key);
+    // Espera o banco estar pronto antes de consultar
+    await this.initPromise;
 
-    if (!entry) return null;
-
-    // Verificar expiração
-    if (Date.now() - entry.timestamp > this.ttlMs) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    logger.debug(`Cache HIT: ${key}`);
-    return entry.data;
-  }
-
-  /**
-   * Armazenar valor no cache
-   */
-  set(title, year, data) {
-    if (!this.enabled) return;
+    if (!this.db) return null;
 
     const key = generateCacheKey(title, year);
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now()
+
+    return new Promise((resolve) => {
+      this.db.get('SELECT data, timestamp FROM cache WHERE key = ?', [key], (err, row) => {
+        if (err) {
+          // Se der erro (ex: tabela sumiu), loga e retorna null sem crashar
+          // logger.debug(`Cache GET Error: ${err.message}`);
+          resolve(null);
+          return;
+        }
+
+        if (!row) {
+          resolve(null);
+          return;
+        }
+
+        if (Date.now() - row.timestamp > this.ttlMs) {
+          this.db.run('DELETE FROM cache WHERE key = ?', [key]);
+          resolve(null);
+        } else {
+          try {
+            const data = JSON.parse(row.data);
+            resolve(data);
+          } catch (e) {
+            resolve(null);
+          }
+        }
+      });
     });
-
-    logger.debug(`Cache SET: ${key}`);
   }
 
-  /**
-   * Limpar cache expirado
-   */
-  cleanup() {
+  async set(title, year, data) {
     if (!this.enabled) return;
 
-    let cleaned = 0;
+    // Espera inicialização também no SET
+    await this.initPromise;
+
+    if (!this.db) return;
+
+    const key = generateCacheKey(title, year);
+    const json = JSON.stringify(data);
     const now = Date.now();
 
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > this.ttlMs) {
-        this.cache.delete(key);
-        cleaned++;
+    this.db.run(
+      'INSERT OR REPLACE INTO cache (key, data, timestamp) VALUES (?, ?, ?)',
+      [key, json, now],
+      (err) => {
+        if (err) logger.error(`Cache SET Error: ${err.message}`);
       }
-    }
-
-    if (cleaned > 0) {
-      logger.info(`Cache cleanup: ${cleaned} entradas removidas`);
-    }
+    );
   }
 
-  /**
-   * Limpar todo o cache
-   */
-  clear() {
-    this.cache.clear();
-    logger.info('Cache limpo completamente');
-  }
+  async cleanup() {
+    if (!this.enabled) return;
+    await this.initPromise;
+    if (!this.db) return;
 
-  /**
-   * Obter estatísticas
-   */
-  getStats() {
-    return {
-      size: this.cache.size,
-      enabled: this.enabled,
-      ttlHours: this.ttlMs / (60 * 60 * 1000)
-    };
+    const threshold = Date.now() - this.ttlMs;
+    this.db.run('DELETE FROM cache WHERE timestamp < ?', [threshold], function (err) {
+      if (!err && this.changes > 0) {
+        logger.info(`Cache Cleanup: ${this.changes} itens expirados removidos.`);
+      }
+    });
   }
 }
 

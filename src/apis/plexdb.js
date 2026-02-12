@@ -2,79 +2,65 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
-const { extractCleanTitle, cleanSeriesInfo } = require('../utils/helpers');
 
 class PlexDBAPI {
   constructor(dbPath) {
     this.name = 'plexdb';
+    this.source = 'plexdb';
     this.originalDbPath = dbPath;
+    // Cria um nome único para esta execução
     this.tempDbPath = path.join('/tmp', `plex_enricher_${Date.now()}.db`);
+    this.db = null;
+    this.initialized = false;
   }
 
-  async enrichProgram(title, year = null) {
-    if (!this.originalDbPath || !fs.existsSync(this.originalDbPath)) {
-      return null;
-    }
-
-    let db = null;
+  // FASE 1: Preparação (Chamado no início do script)
+  async initialize() {
+    if (this.initialized) return;
 
     try {
-      // 1. Copiar DB para temp para evitar lock
+      if (!fs.existsSync(this.originalDbPath)) {
+        throw new Error(`Arquivo de banco Plex não encontrado: ${this.originalDbPath}`);
+      }
+
+      logger.info(`PlexDB: Copiando banco de dados para TEMP (Isso é feito 1 vez)...`);
+      // A cópia pesada acontece AQUI
       fs.copyFileSync(this.originalDbPath, this.tempDbPath);
 
-      // 2. Abrir conexão
-      db = new sqlite3.Database(this.tempDbPath, sqlite3.OPEN_READONLY);
-
-      // 3. Consultar
-      const result = await this._queryDatabase(db, title, year);
-
-      return result;
+      // Abre a conexão persistente
+      this.db = new sqlite3.Database(this.tempDbPath, sqlite3.OPEN_READONLY);
+      this.initialized = true;
+      logger.info('PlexDB: Banco carregado e pronto para consultas ultrarrápidas.');
 
     } catch (error) {
-      logger.error(`PlexDB: Erro ao consultar banco: ${error.message}`);
-      return null;
-    } finally {
-      // 4. Fechar conexão e LIMPAR ARQUIVO TEMPORÁRIO (Essencial!)
-      if (db) {
-        db.close((err) => {
-          if (err) logger.error(`PlexDB: Erro ao fechar banco: ${err.message}`);
-
-          // Deleta o arquivo temporário após fechar a conexão
-          try {
-            if (fs.existsSync(this.tempDbPath)) {
-              fs.unlinkSync(this.tempDbPath);
-              // logger.debug('PlexDB: Arquivo temporário removido com sucesso.');
-            }
-          } catch (unlinkErr) {
-            logger.error(`PlexDB: Falha ao deletar arquivo temporário: ${unlinkErr.message}`);
-          }
-        });
-      } else {
-        // Se a conexão nem abriu, tenta deletar mesmo assim
-        try {
-          if (fs.existsSync(this.tempDbPath)) {
-            fs.unlinkSync(this.tempDbPath);
-          }
-        } catch (unlinkErr) { }
-      }
+      logger.error(`PlexDB Init Error: ${error.message}`);
+      this.initialized = false;
     }
   }
 
-  _queryDatabase(db, title, year) {
+  // FASE 2: Consulta (Chamado milhares de vezes)
+  async enrichProgram(title, year = null) {
+    // Se por acaso não inicializou, tenta agora (fallback)
+    if (!this.initialized || !this.db) {
+      await this.initialize();
+      if (!this.db) return null;
+    }
+
     return new Promise((resolve, reject) => {
-      // Tenta buscar exato primeiro
-      let query = `
-        SELECT title, year, tags_genre, tags_star, summary, hash 
-        FROM metadata_items 
-        WHERE title LIKE ? 
-        AND library_section_id > 0 
+      // Query otimizada para pegar apenas Filmes(1) e Séries(2)
+      const query = `
+        SELECT title, year, tags_genre, summary, hash
+        FROM metadata_items
+        WHERE title LIKE ?
+        AND library_section_id > 0
+        AND metadata_type IN (1, 2)
         ORDER BY year DESC LIMIT 1
       `;
 
-      db.get(query, [`%${title}%`], (err, row) => {
-        if (err) return reject(err);
-
-        if (row) {
+      this.db.get(query, [`%${title}%`], (err, row) => {
+        if (err) {
+          resolve(null);
+        } else if (row) {
           resolve(this._formatResult(row));
         } else {
           resolve(null);
@@ -89,12 +75,28 @@ class PlexDBAPI {
       id: row.hash,
       title: row.title,
       description: row.summary,
-      image: null, // Plex local não fornece URL pública de imagem facilmente
+      image: null,
       genres: row.tags_genre ? row.tags_genre.split('|') : [],
       year: row.year,
       rating: null,
-      type: 'movie' // Simplificado, poderia checar metadata_type
+      type: 'movie'
     };
+  }
+
+  // FASE 3: Limpeza (Chamado no final do script)
+  shutdown() {
+    if (this.db) {
+      this.db.close((err) => {
+        try {
+          if (fs.existsSync(this.tempDbPath)) {
+            fs.unlinkSync(this.tempDbPath);
+            logger.info('PlexDB: Arquivo temporário limpo com sucesso.');
+          }
+        } catch (e) {
+          logger.error(`Erro ao limpar temp DB: ${e.message}`);
+        }
+      });
+    }
   }
 }
 

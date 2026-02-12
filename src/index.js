@@ -1,80 +1,64 @@
-const logger = require('./utils/logger');
 const config = require('./config');
-const XMLTVEnricher = require('./enricher');
-const Scheduler = require('./scheduler');
+const logger = require('./utils/logger');
+const scheduler = require('./scheduler');
+const Enricher = require('./enricher');
 
-/**
- * Inicializar aplicação
- */
 async function initialize() {
+  logger.info('Iniciando XMLTV Enricher...');
+  logger.info('Validando configuração...');
+
+  // Validação segura das APIs (Verifica se o objeto existe antes de ler a chave)
+  if (config.api.tvdb && config.api.tvdb.key) logger.info('✓ TVDb API configurada');
+  if (config.api.tmdb && config.api.tmdb.key) logger.info('✓ TMDb API configurada');
+  if (config.api.omdb && config.api.omdb.key) logger.info('✓ OMDb API configurada');
+
+  // Ajuste para a nova estrutura do Plex no config.js
+  if (config.api.plex) {
+    if (config.api.plex.token) logger.info('✓ Plex API configurada');
+    if (config.api.plex.dbEnabled) logger.info('✓ PlexDB (Acesso direto) habilitado');
+  }
+
+  // Verifica se pelo menos uma fonte está ativa
+  const hasProvider =
+    (config.api.tvdb && config.api.tvdb.key) ||
+    (config.api.tmdb && config.api.tmdb.key) ||
+    (config.api.omdb && config.api.omdb.key) ||
+    (config.api.plex && (config.api.plex.token || config.api.plex.dbEnabled));
+
+  if (!hasProvider) {
+    logger.warn('AVISO: Nenhuma API externa ou banco local configurado. O enriquecimento será limitado ou nulo.');
+  }
+
+  // Logs da nova configuração de performance
+  if (config.processing) {
+    logger.info(`Intervalo de agendamento: ${config.processing.scheduleHours} horas`);
+    logger.info(`Nível de Concorrência: ${config.processing.concurrency || 1} threads`);
+  }
+
+  // Iniciar o scheduler
+  scheduler.start();
+
+  // Executar imediatamente na inicialização
+  logger.info('Executando primeira rodada imediatamente...');
   try {
-    logger.info('╔════════════════════════════════════════════════════════════╗');
-    logger.info('║         XMLTV Enricher - Iniciando Aplicação              ║');
-    logger.info('╚════════════════════════════════════════════════════════════╝');
-
-    // Validar configuração
-    logger.info('Validando configuração...');
-    if (!config.apis.plexdb.enabled && !config.apis.plex.enabled && !config.apis.tvdb.enabled && !config.apis.tmdb.enabled && !config.apis.omdb.enabled) {
-      throw new Error('Nenhuma API está configurada! Configure pelo menos uma chave de API no arquivo .env');
-    }
-
-    logger.info('Configuração:');
-    logger.info(`  - Tvheadend URL: ${config.tvheadend.url}`);
-    logger.info(`  - Arquivo de saída: ${config.output.filePath}`);
-    logger.info(`  - Intervalo: ${config.schedule.intervalHours} hora(s)`);
-    logger.info(`  - Cache: ${config.cache.enabled ? 'Ativado' : 'Desativado'} (TTL: ${config.cache.ttlHours}h)`);
-    logger.info(`  - APIs: ${[
-      config.apis.plexdb.enabled ? 'Plex Database (Principal)' : null,
-      config.apis.plex.enabled ? 'Plex API' : null,
-      config.apis.tvdb.enabled ? 'TVDb' : null,
-      config.apis.tmdb.enabled ? 'TMDb' : null,
-      config.apis.omdb.enabled ? 'OMDb' : null
-    ].filter(Boolean).join(', ')}`);
-
-    // Criar enriquecedor
-    const enricher = new XMLTVEnricher(config);
-    
-    // Inicializar enriquecedor (async)
-    await enricher.initialize();
-
-    // Criar agendador
-    const scheduler = new Scheduler(config, enricher);
-
-    // Iniciar agendador
-    const started = scheduler.start();
-
-    if (!started) {
-      throw new Error('Falha ao iniciar agendador');
-    }
-
-    // Tratadores de sinais para graceful shutdown
-    process.on('SIGINT', () => {
-      logger.info('\n╔════════════════════════════════════════════════════════════╗');
-      logger.info('║         Encerrando aplicação (SIGINT)...                   ║');
-      logger.info('╚════════════════════════════════════════════════════════════╝');
-      scheduler.stop();
-      process.exit(0);
-    });
-
-    process.on('SIGTERM', () => {
-      logger.info('\n╔════════════════════════════════════════════════════════════╗');
-      logger.info('║         Encerrando aplicação (SIGTERM)...                  ║');
-      logger.info('╚════════════════════════════════════════════════════════════╝');
-      scheduler.stop();
-      process.exit(0);
-    });
-
-    logger.info('╔════════════════════════════════════════════════════════════╗');
-    logger.info('║         Aplicação iniciada com sucesso!                   ║');
-    logger.info('║         Pressione Ctrl+C para encerrar                    ║');
-    logger.info('╚════════════════════════════════════════════════════════════╝');
-
-  } catch (error) {
-    logger.error(`Erro fatal durante inicialização: ${error.message}`);
-    logger.error(error.stack);
-    process.exit(1);
+    const enricher = new Enricher(config);
+    await enricher.run();
+  } catch (err) {
+    logger.error(`Erro ao executar Enricher: ${err.message}`);
   }
 }
 
-// Iniciar aplicação
+// Tratamento de erros não capturados para evitar crash total silencioso
+process.on('uncaughtException', (error) => {
+  logger.error(`Erro não capturado: ${error.message}`);
+  if (error.stack) logger.debug(error.stack);
+  // Em produção, o PM2 vai reiniciar o processo
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Promessa rejeitada não tratada');
+  logger.debug(reason);
+});
+
 initialize();
