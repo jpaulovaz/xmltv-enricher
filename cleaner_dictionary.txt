@@ -1,67 +1,69 @@
 # Dicionário de Prefixos para Limpeza de Títulos
-# O sistema removerá estas palavras se aparecerem no INÍCIO do título.
-# Não se preocupe com maiúsculas/minúsculas.
-# Linhas começando com # são comentários.
+# ORDEM IMPORTANTE: Do mais longo para o mais curto para evitar cortes parciais.
 
-# -- Categorias Genéricas (Antigas) --
-FILME
-SERIE
-SÉRIE
-CINE
-DOC
-DESENHO
-NOVELA
-VISAO
-VISÃO
-PROGRAMAÇÃO
-MISSA
-TERÇO
-EPISODIO
-EPISÓDIO
-
-# -- Sessões de TV (Novas - Auditoria) --
-Sessão da Tarde
-Sessão de Gala
+# --- Prefixos Longos e Específicos (Prioridade Alta) ---
+Cine Clube Arte 1 Clássicos
+Campeões de Bilheteria
+Arte 1 Em Movimento
 Sessão Superestreia
+Festival de Sucessos
+Cinema Especial
+Temperatura Máxima
+Cine Clube Arte 1
+Sessão de Gala
+Sessão da Tarde
 Sessão Aventura
-Sessão Pipoca
 Sessão Especial
+Tela de Sucessos
+Arte 1 Apresenta
+Domingo Maior
+Cinema em Casa
+Cine Espetacular
+Curta no Almoço
+Sessão Pipoca
+Sessão Comédia
+Melhores Momentos
 Supercine
 Tela Quente
 Tela Máxima
-Tela de Sucessos
-Domingo Maior
-Domingo Legal
-Corujão
-Cinema Especial
-Cinema em Casa
-Cinemasso
-Campeões de Bilheteria
-Temperatura Máxima
-Festival de Sucessos
-Cine Espetacular
 Cine Aventura
 Cine Família
-Super Tela
-Top Cine
-
-# -- Novos Prefixos Identificados (Auditoria Fev/26) --
+Curta Arte 1
 Curta In Box
 Curta in Box
 Curtas Do Off
 Curtas do Off
-Cine Clube Arte 1 Clássicos
-Cine Clube Arte 1
-Curta Arte 1
-Arte 1
-Curta no Almoço
-Arte 1
-Arte 1 Em Movimento
-Arte 1 Apresenta
+Domingo Legal
+Super Tela
+Pré-Jogo
+Pós-Jogo
+Top Cine
+Corujão
+Especial
 Estreia
-Pré-Estreia
+
+# --- Prefixos Médios e Variedades ---
+Cinemasso
+Bastidores
+Making Of
+Compacto
 Ao Vivo
-Vivo
+Arte 1
+Visão
+Missa
+Terço
+
+# --- Prefixos Curtos e Genéricos (Perigo - Deixar por último) ---
+Programação
 Reapresentação
 Maratona
-Especial
+Episódio
+Episodio
+Novela
+Desenho
+Série
+Serie
+Filme
+Vivo
+Cine
+Doc

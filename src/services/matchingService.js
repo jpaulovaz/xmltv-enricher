@@ -10,6 +10,14 @@ const FuzzyMatcher = require('../utils/fuzzyMatcher');
 const fs = require('fs');
 const path = require('path');
 
+// Tenta carregar a config de placeholders. Se falhar, usa objeto vazio para não quebrar.
+let placeholdersConfig = { styles: {}, channels: {} };
+try {
+  placeholdersConfig = require('../config/placeholders.json');
+} catch (e) {
+  logger.warn("Arquivo src/config/placeholders.json não encontrado. Usando fallback padrão.");
+}
+
 class MatchingService {
   constructor(...args) {
     this.cacheService = args[args.length - 1];
@@ -23,11 +31,31 @@ class MatchingService {
     this.threshold = config.matching.confidenceThreshold;
 
     this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
-    // Verifica se existe, senão cria com cabeçalho
     if (!fs.existsSync(this.auditFilePath)) {
       fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     }
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
+  }
+
+  // Helper para decidir qual imagem usar baseada no canal
+  _getDynamicPlaceholder(channelName, defaultPlaceholder) {
+    if (!channelName || channelName === '-') return defaultPlaceholder;
+
+    // 1. Verifica se o canal tem um estilo definido
+    const style = placeholdersConfig.channels[channelName];
+
+    // 2. Se tiver estilo e o estilo tiver uma URL, retorna ela
+    if (style && placeholdersConfig.styles[style]) {
+      return placeholdersConfig.styles[style];
+    }
+
+    // 3. Se não, tenta usar o estilo 'generic' do JSON
+    if (placeholdersConfig.styles.generic) {
+      return placeholdersConfig.styles.generic;
+    }
+
+    // 4. Último caso: usa o que veio do .env
+    return defaultPlaceholder;
   }
 
   async enrichProgram(programme, placeholderImageUrl, channelName = '-') {
@@ -35,7 +63,11 @@ class MatchingService {
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
 
-    // --- ESTRATÉGIA DE NOMES (Mantendo as correções de hífen e dois pontos) ---
+    // --- CÁLCULO DO PLACEHOLDER DINÂMICO ---
+    // Define qual imagem será usada caso nada seja encontrado ou a API não tenha poster.
+    const activePlaceholder = this._getDynamicPlaceholder(channelName, placeholderImageUrl);
+
+    // --- ESTRATÉGIA DE NOMES ---
     const splitRegexHyphen = /(\s+[-–]\s+|\s*\()/;
     const splitRegexColon = /\s*:\s*/;
 
@@ -56,7 +88,8 @@ class MatchingService {
           if (!cached.notFound) {
             logger.info(`✓ Encontrado em cache: "${title}"`);
             this._writeToAudit(channelName, originalTitle, title, 100, cached.title, 'Cache');
-            return this._applyEnrichment(programme, cached, placeholderImageUrl);
+            // Passa o activePlaceholder para usar se o cache não tiver imagem
+            return this._applyEnrichment(programme, cached, activePlaceholder);
           } else {
             titlesToSkipApi.add(title);
           }
@@ -72,7 +105,6 @@ class MatchingService {
 
     for (const titleToTry of titlesToTry) {
       if (titlesToSkipApi.has(titleToTry)) continue;
-
       let foundForThisTitle = false;
 
       for (const api of this.apis) {
@@ -84,83 +116,57 @@ class MatchingService {
 
           for (const yearAttempt of yearsToTry) {
             const enriched = await api.enrichProgram(titleToTry, yearAttempt);
-
             if (enriched) {
               let score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
               if (score < this.threshold && score > 40 && !yearAttempt) score += 20;
 
-              // --- CORREÇÃO AQUI ---
-              // Antes: if (score >= this.threshold && score > bestScore)
-              // Agora: if (score > bestScore) -> Guarda o melhor mesmo se for ruim (para auditar depois)
               if (score > bestScore) {
                 bestScore = score;
                 bestEnriched = enriched;
                 usedTitle = titleToTry;
                 finalSource = enriched.source;
-                // Não marcamos foundForThisTitle=true aqui ainda para não bloquear o cache negativo se for ruim
               }
-
-              // Se achou um EXCELENTE, aí sim para tudo
               if (bestScore >= 95) break;
             }
           }
         } catch (e) { }
         if (bestScore >= 95) break;
       }
-
-      // Se não achou NADA (nem ruim) ou achou algo muito ruim para este título específico, marcamos para não tentar de novo na mesma rodada
-      if (!bestEnriched) {
-        // Lógica simplificada: Cache negativo só é salvo no final se realmente falhar tudo
-      }
       if (bestScore >= 95) break;
     }
 
-    // FASE 3: DECISÃO FINAL (APROVAR OU REPROVAR)
-
-    // CASO 1: SUCESSO (Atingiu o Threshold)
+    // FASE 3: DECISÃO FINAL
     if (bestEnriched && bestScore >= this.threshold) {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
       this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource);
-      return this._applyEnrichment(programme, bestEnriched, placeholderImageUrl);
+      return this._applyEnrichment(programme, bestEnriched, activePlaceholder);
     }
 
-    // CASO 2: FRACASSO (Mas temos dados para mostrar o "porquê")
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
     logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"${statusMsg}`);
 
-    // Cache Negativo: Se tentamos e o melhor que conseguimos foi ruim, salvamos cache negativo para não gastar API na próxima
-    // (Opcional: você pode comentar essa linha se quiser que ele continue tentando sempre os rejeitados)
-    try {
-      if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true });
-    } catch (e) { }
-
     if (bestScore > 0) {
-      // REJEITADO: Achou algo, mas a nota foi baixa
+      try { if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true }); } catch (e) { }
       const tentativaTitulo = bestEnriched ? bestEnriched.title : "Tentativa Falha";
       const fonteTentativa = finalSource !== '-' ? finalSource : 'Desconhecida';
       this._writeToAudit(channelName, originalTitle, usedTitle !== '-' ? usedTitle : cleanTitle, bestScore, tentativaTitulo, fonteTentativa);
     } else {
-      // NADA: Realmente a API não devolveu nada (ou deu erro)
+      try { if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true }); } catch (e) { }
       this._writeToAudit(channelName, originalTitle, cleanTitle, 0, 'NADA ENCONTRADO', '-');
     }
 
-    return this._applySmartPlaceholder(programme, placeholderImageUrl);
+    // Retorna o Placeholder Dinâmico
+    return this._applySmartPlaceholder(programme, activePlaceholder);
   }
 
-  // --- GRAVAÇÃO NO CSV (Lógica de Status) ---
   _writeToAudit(channel, original, search, confidence, resultTitle, source) {
     const numericScore = (typeof confidence === 'string' ? parseFloat(confidence) : confidence);
-
-    // Define status baseado no Threshold real
     const isSuccess = numericScore >= this.threshold || numericScore === 100;
 
     let status = '❌ NADA';
-    if (isSuccess) {
-      status = '✅ OK';
-    } else if (numericScore > 0) {
-      status = '⚠️ REJEITADO'; // Agora vai aparecer!
-    }
+    if (isSuccess) status = '✅ OK';
+    else if (numericScore > 0) status = '⚠️ REJEITADO';
 
     const safeOriginal = original ? original.replace(/;/g, ',') : '';
     const safeSearch = search ? search.replace(/;/g, ',') : '';
@@ -174,6 +180,7 @@ class MatchingService {
 
   _applyEnrichment(programme, data, placeholder) {
     const prog = { ...programme };
+    // Usa a imagem da API ou o placeholder dinâmico
     prog.icon = [{ $: { src: data.image || placeholder } }];
     if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: 'pt-BR' } }));
     if (data.year) prog.date = [data.year.toString()];
@@ -186,14 +193,16 @@ class MatchingService {
     return prog;
   }
 
-  _applySmartPlaceholder(programme, staticPlaceholder) {
+  _applySmartPlaceholder(programme, dynamicPlaceholder) {
     const prog = { ...programme };
     const originalTitle = programme.title?.[0] || 'Unknown';
     const epInfo = parseEpisodeInfo(originalTitle);
+
     if (epInfo) {
       prog['episode-num'] = [{ _: convertToXmltvNs(epInfo.season, epInfo.episode), $: { system: 'xmltv_ns' } }];
     }
-    prog.icon = [{ $: { src: staticPlaceholder } }];
+    // Aplica a imagem temática (Kids, Sports, etc) em vez da genérica
+    prog.icon = [{ $: { src: dynamicPlaceholder } }];
     return prog;
   }
 }
