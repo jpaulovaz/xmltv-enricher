@@ -28,8 +28,11 @@ services:
       # Persistir cache SQLite
       - ./data:/app/data
       
-      # Persistir logs
-      - ./logs:/var/log
+      # Persistir logs (mapeado para /app/logs dentro do container)
+      - ./logs:/app/logs
+      
+      # Persistir arquivo de auditoria
+      - ./auditoria_enricher.csv:/app/auditoria_enricher.csv
       
       # Se usar PlexDB, montar o banco (descomente e ajuste o caminho)
       # - /path/to/plex/database:/plexdb:ro
