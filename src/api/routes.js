@@ -112,4 +112,23 @@ module.exports = (app, apiServer) => {
       res.json({ audit: [] });
     }
   });
+
+  // Get configuration
+  app.get('/api/config', (req, res) => {
+    const config = configService.readConfig();
+    res.json(config);
+  });
+
+  // Save configuration
+  app.post('/api/config', (req, res) => {
+    const newConfig = req.body;
+    const result = configService.saveConfig(newConfig);
+    
+    if (result.success) {
+      apiServer.emitLog('info', '⚙️ Configurações atualizadas. Reinicie para aplicar.');
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  });
 };
