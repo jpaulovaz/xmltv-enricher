@@ -457,6 +457,26 @@ footer a {
     font-size: 14px;
 }
 
+.alert-warning {
+    background: #fff3cd;
+    border: 2px solid var(--warning);
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.alert-warning code {
+    background: #2c3e50;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    display: inline-block;
+    margin-top: 8px;
+}
+
 /* ============================================
    LOG CONTROLS ENHANCEMENTS
    ============================================ */
