@@ -120,6 +120,10 @@ class Enricher {
           // Descobre o nome do canal deste programa
           const channelId = prog.$ ? prog.$.channel : null;
           const channelName = channelMap[channelId] || channelId || 'Desconhecido';
+          const progTitle = prog.title && prog.title[0] ? (typeof prog.title[0] === 'object' ? prog.title[0]._ : prog.title[0]) : 'Sem título';
+
+          // Log detalhado do programa sendo processado
+          logger.debug(`Processando: ${progTitle} (${channelName})`);
 
           // Passa o channelName como 3º argumento
           const enriched = await this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
@@ -127,8 +131,10 @@ class Enricher {
           // Atualizar estatísticas (verificar se foi enriquecido)
           if (enriched.icon && enriched.icon[0] && enriched.icon[0].$.src !== this.config.output.placeholderImage) {
             statsService.incrementEnriched();
+            logger.debug(`✓ Enriquecido: ${progTitle}`);
           } else {
             statsService.incrementFailed();
+            logger.debug(`✗ Não enriquecido: ${progTitle}`);
           }
 
           return enriched;
@@ -137,11 +143,10 @@ class Enricher {
         const batchResults = await Promise.all(batchPromises);
         enrichedProgrammes.push(...batchResults);
 
-        if ((i + batchSize) % 50 < batchSize) {
-          const percent = Math.round(((i + batch.length) / total) * 100);
-          logger.info(`Progresso: ${percent}% (${i + batch.length}/${total})`);
-          if (apiServer) apiServer.emitLog('info', `Progresso: ${percent}%`);
-        }
+        // Log mais frequente de progresso
+        const percent = Math.round(((i + batch.length) / total) * 100);
+        const processed = i + batch.length;
+        logger.info(`Progresso: ${percent}% (${processed}/${total} programas)`);
       }
 
       // 4. Reconstruir XML
