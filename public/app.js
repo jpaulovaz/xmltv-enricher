@@ -214,8 +214,8 @@ configForm.addEventListener('submit', async (e) => {
         const result = await response.json();
         
         if (result.success) {
-            alert('✅ Configurações salvas com sucesso!\n\n⚠️ IMPORTANTE: Reinicie o container Docker para aplicar:\n\ndocker-compose restart');
-            addLog('info', 'Configurações salvas com sucesso. Reinicie o container para aplicar.');
+            alert('✅ Configurações salvas com sucesso!\n\nAs mudanças foram aplicadas automaticamente.');
+            addLog('info', 'Configurações salvas e aplicadas com sucesso');
         } else {
             alert('❌ Erro: ' + result.error);
             addLog('error', 'Erro ao salvar configurações: ' + result.error);
@@ -229,6 +229,138 @@ configForm.addEventListener('submit', async (e) => {
 btnResetConfig.addEventListener('click', () => {
     if (confirm('Deseja resetar o formulário com os valores atuais do servidor?')) {
         loadConfig();
+    }
+});
+
+// ============================================
+// CONNECTION TESTS
+// ============================================
+function showTestResult(elementId, success, message) {
+    const element = document.getElementById(elementId);
+    element.textContent = message;
+    element.className = 'test-result ' + (success ? 'success' : 'error');
+}
+
+function showTestLoading(elementId) {
+    const element = document.getElementById(elementId);
+    element.textContent = '⏳ Testando...';
+    element.className = 'test-result loading';
+}
+
+// Test Tvheadend
+btnTestTvheadend.addEventListener('click', async () => {
+    const url = document.getElementById('TVHEADEND_URL').value;
+    const username = document.getElementById('TVHEADEND_USERNAME').value;
+    const password = document.getElementById('TVHEADEND_PASSWORD').value;
+    
+    if (!url) {
+        showTestResult('tvheadendTestResult', false, '❌ URL não informada');
+        return;
+    }
+    
+    showTestLoading('tvheadendTestResult');
+    btnTestTvheadend.disabled = true;
+    
+    try {
+        const response = await fetch('/api/test/tvheadend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, username, password })
+        });
+        const result = await response.json();
+        showTestResult('tvheadendTestResult', result.success, 
+            result.success ? `✅ ${result.message} (v${result.version})` : `❌ ${result.message}`);
+    } catch (error) {
+        showTestResult('tvheadendTestResult', false, '❌ Erro ao testar conexão');
+    } finally {
+        btnTestTvheadend.disabled = false;
+    }
+});
+
+// Test Plex
+btnTestPlex.addEventListener('click', async () => {
+    const url = document.getElementById('PLEX_URL').value;
+    const token = document.getElementById('PLEX_TOKEN').value;
+    
+    if (!url || !token) {
+        showTestResult('plexTestResult', false, '❌ URL e Token são obrigatórios');
+        return;
+    }
+    
+    showTestLoading('plexTestResult');
+    btnTestPlex.disabled = true;
+    
+    try {
+        const response = await fetch('/api/test/plex', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, token })
+        });
+        const result = await response.json();
+        showTestResult('plexTestResult', result.success, 
+            result.success ? `✅ ${result.message} (${result.serverName})` : `❌ ${result.message}`);
+    } catch (error) {
+        showTestResult('plexTestResult', false, '❌ Erro ao testar conexão');
+    } finally {
+        btnTestPlex.disabled = false;
+    }
+});
+
+// Test TMDb
+btnTestTmdb.addEventListener('click', async () => {
+    const apiKey = document.getElementById('TMDB_API_KEY').value;
+    
+    if (!apiKey) {
+        showTestResult('tmdbTestResult', false, '❌ API Key não informada');
+        return;
+    }
+    
+    showTestLoading('tmdbTestResult');
+    btnTestTmdb.disabled = true;
+    
+    try {
+        const response = await fetch('/api/test/tmdb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey })
+        });
+        const result = await response.json();
+        showTestResult('tmdbTestResult', result.success, 
+            result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
+    } catch (error) {
+        showTestResult('tmdbTestResult', false, '❌ Erro ao testar API');
+    } finally {
+        btnTestTmdb.disabled = false;
+    }
+});
+
+// Test OMDb
+btnTestOmdb.addEventListener('click', async () => {
+    const apiKey = document.getElementById('OMDB_API_KEY').value;
+    
+    if (!apiKey) {
+        showTestResult('omdbTestResult', false, '❌ API Key não informada');
+        return;
+    }
+    
+    showTestLoading('omdbTestResult');
+    btnTestOmdb.disabled = true;
+    
+    try {
+        const response = await fetch('/api/test/omdb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey })
+        });
+        const result = await response.json();
+        showTestResult('omdbTestResult', result.success, 
+            result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
+    } catch (error) {
+        showTestResult('omdbTestResult', false, '❌ Erro ao testar API');
+    } finally {
+        btnTestOmdb.disabled = false;
+    }
+});
     }
 });
 
