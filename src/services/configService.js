@@ -351,6 +351,7 @@ class ConfigService {
       TMDB_API_KEY: '',
       OMDB_API_KEY: '',
       IMDB_ENABLED: 'false',
+      API_LANGUAGE: 'pt-BR',
       PLEX_URL: 'http://localhost:32400',
       PLEX_TOKEN: '',
       PLEX_DB_ENABLED: 'false',
