@@ -78,8 +78,21 @@ class ConfigService {
       // Criar backup do .env atual
       if (fs.existsSync(this.envPath)) {
         const backupPath = `${this.envPath}.backup`;
-        fs.copyFileSync(this.envPath, backupPath);
-        console.log(`[ConfigService] Backup criado: ${backupPath}`);
+        try {
+          // Verificar se backupPath é um diretório e remover se for
+          if (fs.existsSync(backupPath)) {
+            const stats = fs.statSync(backupPath);
+            if (stats.isDirectory()) {
+              fs.rmSync(backupPath, { recursive: true });
+              console.log(`[ConfigService] Removido diretório conflitante: ${backupPath}`);
+            }
+          }
+          fs.copyFileSync(this.envPath, backupPath);
+          console.log(`[ConfigService] Backup criado: ${backupPath}`);
+        } catch (backupError) {
+          console.log(`[ConfigService] Aviso: não foi possível criar backup: ${backupError.message}`);
+          // Continuar mesmo sem backup
+        }
       }
 
       // Construir conteúdo do .env
