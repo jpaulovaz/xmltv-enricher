@@ -1,19 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
+const config = require('../config');
 
 class ConfigService {
   constructor() {
-    // Usar caminho absoluto baseado no diretório do projeto
-    // __dirname aqui é /app/src/services, então subimos 2 níveis
-    const projectRoot = path.resolve(__dirname, '..', '..');
-    this.envPath = path.join(projectRoot, '.env');
+    // Usar o caminho definido no config.js para garantir consistência
+    this.envPath = config.envPath;
     this.configCache = null;
     this.apiServer = null;
     
     // Log do caminho para debug
     console.log(`[ConfigService] ENV Path: ${this.envPath}`);
     console.log(`[ConfigService] ENV exists: ${fs.existsSync(this.envPath)}`);
+    
+    // Criar arquivo .env se não existir
+    if (!fs.existsSync(this.envPath)) {
+      console.log(`[ConfigService] Criando .env com configurações padrão...`);
+      this.saveConfig(this._getDefaultConfig());
+    }
   }
 
   /**
