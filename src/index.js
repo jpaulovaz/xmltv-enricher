@@ -43,6 +43,9 @@ async function initialize() {
   apiServer = new APIServer(config, enricher, scheduler);
   await apiServer.start();
 
+  // Conectar logger ao WebSocket para emitir todos os logs
+  logger.connectWebSocket(apiServer);
+
   // Iniciar o scheduler
   scheduler.start();
 
