@@ -117,7 +117,10 @@
         <div id="settings" class="tab-content">
             <div class="card">
                 <h2>⚙️ Configurações do Sistema</h2>
-                <p class="info-text">⚠️ Após salvar as configurações, <strong>reinicie o aplicativo</strong> para aplicar as mudanças.</p>
+                <div class="alert-warning" data-testid="restart-warning">
+                    <strong>⚠️ IMPORTANTE:</strong> Após salvar as configurações, você deve <strong>reiniciar o container Docker</strong> para aplicar as mudanças:
+                    <code>docker-compose restart</code>
+                </div>
                 
                 <form id="configForm">
                     <!-- Tvheadend -->
