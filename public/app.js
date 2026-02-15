@@ -20,6 +20,12 @@ const btnPause = document.getElementById('btnPause');
 const btnResume = document.getElementById('btnResume');
 const btnClearLogs = document.getElementById('btnClearLogs');
 
+// Test buttons
+const btnTestTvheadend = document.getElementById('btnTestTvheadend');
+const btnTestPlex = document.getElementById('btnTestPlex');
+const btnTestTmdb = document.getElementById('btnTestTmdb');
+const btnTestOmdb = document.getElementById('btnTestOmdb');
+
 // Tabs
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabContents = document.querySelectorAll('.tab-content');
