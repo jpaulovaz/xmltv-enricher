@@ -1,43 +1,7 @@
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment
+node_modules
+.git
 .env
-.env.local
-.env.*.local
-
-# Generated data
-data/
-output/
-backups/
-logs/
-*.log
-cache_enricher.db*
-auditoria_enricher.csv
-stats.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Git
-.git/
-.gitignore
-
-# Docker
-Dockerfile.dev
-docker-compose.override.yml
-
-# Tests
-test/
-tests/
-coverage/
+data
+output
+backups
+logs
