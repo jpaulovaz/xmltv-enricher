@@ -128,16 +128,20 @@
                         <h3>📡 Tvheadend</h3>
                         <div class="form-group">
                             <label for="TVHEADEND_URL">URL do Tvheadend:</label>
-                            <input type="text" id="TVHEADEND_URL" name="TVHEADEND_URL" placeholder="http://localhost:9981">
+                            <input type="text" id="TVHEADEND_URL" name="TVHEADEND_URL" placeholder="http://localhost:9981" data-testid="input-tvheadend-url">
                         </div>
                         <div class="form-group">
                             <label for="TVHEADEND_USERNAME">Usuário:</label>
-                            <input type="text" id="TVHEADEND_USERNAME" name="TVHEADEND_USERNAME">
+                            <input type="text" id="TVHEADEND_USERNAME" name="TVHEADEND_USERNAME" data-testid="input-tvheadend-user">
                         </div>
                         <div class="form-group">
                             <label for="TVHEADEND_PASSWORD">Senha:</label>
-                            <input type="password" id="TVHEADEND_PASSWORD" name="TVHEADEND_PASSWORD">
+                            <input type="password" id="TVHEADEND_PASSWORD" name="TVHEADEND_PASSWORD" data-testid="input-tvheadend-pass">
                         </div>
+                        <button type="button" class="btn btn-test" id="btnTestTvheadend" data-testid="btn-test-tvheadend">
+                            🔌 Testar Conexão Tvheadend
+                        </button>
+                        <span id="tvheadendTestResult" class="test-result"></span>
                     </div>
 
                     <!-- APIs -->
