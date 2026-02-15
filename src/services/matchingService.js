@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const config = require('../config');
 const {
   extractCleanTitle,
   cleanSeriesInfo,
@@ -21,19 +22,18 @@ try {
 class MatchingService {
   constructor(...args) {
     this.cacheService = args[args.length - 1];
-    const config = args[args.length - 2];
+    const configArg = args[args.length - 2];
     this.apis = args.slice(0, -2).filter(api => api !== null);
 
     this.fuzzyMatcher = new FuzzyMatcher(
-      config.matching.algorithm,
-      config.matching.confidenceThreshold
+      configArg.matching.algorithm,
+      configArg.matching.confidenceThreshold
     );
-    this.threshold = config.matching.confidenceThreshold;
+    this.threshold = configArg.matching.confidenceThreshold;
 
     this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
-    if (!fs.existsSync(this.auditFilePath)) {
-      fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
-    }
+    // Sempre recriar o arquivo de auditoria no início de cada execução
+    fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
   }
 
