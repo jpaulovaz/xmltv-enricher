@@ -100,6 +100,11 @@ class ConfigService {
         process.env[key] = mergedConfig[key];
       });
 
+      // Recarregar o módulo de configuração para refletir as mudanças
+      if (config.loadEnv) {
+        config.loadEnv();
+      }
+
       // Atualizar cache
       this.configCache = mergedConfig;
 
