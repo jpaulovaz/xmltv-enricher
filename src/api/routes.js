@@ -125,10 +125,38 @@ module.exports = (app, apiServer) => {
     const result = configService.saveConfig(newConfig);
     
     if (result.success) {
-      apiServer.emitLog('info', '⚙️ Configurações atualizadas. Reinicie para aplicar.');
+      apiServer.emitLog('info', '⚙️ Configurações salvas e aplicadas!');
       res.json(result);
     } else {
       res.status(400).json(result);
     }
+  });
+
+  // Test Tvheadend connection
+  app.post('/api/test/tvheadend', async (req, res) => {
+    const { url, username, password } = req.body;
+    const result = await configService.testTvheadendConnection(url, username, password);
+    res.json(result);
+  });
+
+  // Test Plex connection
+  app.post('/api/test/plex', async (req, res) => {
+    const { url, token } = req.body;
+    const result = await configService.testPlexConnection(url, token);
+    res.json(result);
+  });
+
+  // Test TMDb API Key
+  app.post('/api/test/tmdb', async (req, res) => {
+    const { apiKey } = req.body;
+    const result = await configService.testTmdbApiKey(apiKey);
+    res.json(result);
+  });
+
+  // Test OMDb API Key
+  app.post('/api/test/omdb', async (req, res) => {
+    const { apiKey } = req.body;
+    const result = await configService.testOmdbApiKey(apiKey);
+    res.json(result);
   });
 };
