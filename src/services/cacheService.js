@@ -7,7 +7,14 @@ class CacheService {
   constructor(config) {
     this.enabled = config.cache.enabled;
     this.ttlMs = config.cache.ttlHours * 60 * 60 * 1000;
-    this.dbPath = path.join(process.cwd(), 'cache_enricher.db');
+    
+    // Usar diretório data/ para compatibilidade com Docker
+    const dataDir = path.join(process.cwd(), 'data');
+    const fs = require('fs');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    this.dbPath = path.join(dataDir, 'cache_enricher.db');
     this.db = null;
 
     // Promessa que resolve quando o banco estiver pronto para uso
