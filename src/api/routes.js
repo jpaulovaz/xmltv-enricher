@@ -1,7 +1,10 @@
 const Enricher = require('../enricher');
 const logger = require('../utils/logger');
+const ConfigService = require('../services/configService');
 const fs = require('fs');
 const path = require('path');
+
+const configService = new ConfigService();
 
 module.exports = (app, apiServer) => {
   // Health check
