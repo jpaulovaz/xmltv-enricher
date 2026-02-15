@@ -16,7 +16,8 @@ class StatsService {
         tvdb: 0,
         omdb: 0,
         plex: 0,
-        plexdb: 0
+        plexdb: 0,
+        imdb: 0
       },
       errors: []
     };
