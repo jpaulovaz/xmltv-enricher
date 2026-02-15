@@ -1,57 +1,43 @@
-# Dependências
+# Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-yarn.lock
 
-# Arquivos de ambiente
+# Environment
 .env
 .env.local
 .env.*.local
 
-# Logs (apenas arquivos gerados)
+# Generated data
+data/
+output/
+backups/
 logs/
 *.log
-
-# Dados e cache (apenas arquivos gerados)
-data/
 cache_enricher.db*
 auditoria_enricher.csv
 stats.json
-diagnostico*.txt
-resultado_diagnostico.csv
-
-# Output e backups (apenas arquivos gerados)
-output/
-backups/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Temp
-tmp/
-temp/
 
 # Git
 .git/
 .gitignore
 
 # Docker
+Dockerfile.dev
 docker-compose.override.yml
 
-# Testes
+# Tests
 test/
 tests/
-*.test.js
-*.spec.js
 coverage/
