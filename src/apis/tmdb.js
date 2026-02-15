@@ -57,7 +57,7 @@ class TMDbAPI {
       const params = {
         api_key: this.apiKey,
         query,
-        language: 'pt-BR', // Vital para canais brasileiros
+        language: config.api.language || 'pt-BR',
         include_adult: false
       };
 
