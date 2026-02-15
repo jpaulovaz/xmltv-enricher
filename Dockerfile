@@ -1,26 +1,6 @@
-# Multi-stage build para otimização
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-# Instalar dependências de build
-RUN apk add --no-cache python3 make g++
-
-# Copiar package files
-COPY package.json ./
-
-# Instalar dependências (sem frozen-lockfile pois não temos yarn.lock)
-# Aumentar timeout para evitar erros de rede
-RUN yarn install --network-timeout 100000 || \
-    (echo "Retry installing dependencies..." && yarn install --network-timeout 100000)
-
-# Copiar código fonte
-COPY . .
-
-# Stage final
 FROM node:18-alpine
 
-# Instalar dependências do sistema para SQLite
+# Instalar dependências do sistema
 RUN apk add --no-cache \
     python3 \
     make \
@@ -29,11 +9,17 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copiar node_modules e código da stage anterior
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./
+# Copiar arquivos de dependências
+COPY package.json ./
+
+# Instalar dependências Node.js
+RUN yarn install --network-timeout 100000 || \
+    yarn install --network-timeout 100000
+
+# Copiar TODO o código fonte
+COPY src/ ./src/
+COPY public/ ./public/
+COPY ecosystem.config.js ./ 
 
 # Criar diretórios necessários
 RUN mkdir -p /app/output /app/backups /var/log
