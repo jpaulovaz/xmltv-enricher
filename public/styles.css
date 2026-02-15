@@ -44,6 +44,12 @@ header h1 {
     color: var(--dark);
 }
 
+.header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
 .status-badge {
     display: flex;
     align-items: center;
