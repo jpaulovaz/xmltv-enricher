@@ -200,11 +200,9 @@ class MatchingService {
     }
   }
   
-  // Método para fechar o stream (chamado no final do processamento)
+  // Método para fechar recursos (mantido para compatibilidade)
   closeAuditStream() {
-    if (this.auditStream) {
-      this.auditStream.end();
-    }
+    // Não há mais stream para fechar, usando appendFileSync
   }
 
   saveAuditCSV() { }
