@@ -128,14 +128,28 @@ class Enricher {
           // Passa o channelName como 3º argumento
           const enriched = await this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
           
-          // Atualizar estatísticas (verificar se foi enriquecido)
-          if (enriched.icon && enriched.icon[0] && enriched.icon[0].$.src !== this.config.output.placeholderImage) {
+          // Atualizar estatísticas baseado na fonte de enriquecimento
+          if (enriched._wasEnriched) {
             statsService.incrementEnriched();
-            logger.debug(`✓ Enriquecido: ${progTitle}`);
+            
+            // Contar por fonte
+            const source = enriched._enrichmentSource;
+            if (source === 'cache') {
+              statsService.incrementCacheHits();
+            } else if (source && source !== 'placeholder') {
+              // Contar chamada de API
+              statsService.incrementApiCall(source);
+            }
+            
+            logger.debug(`✓ Enriquecido (${source}): ${progTitle}`);
           } else {
             statsService.incrementFailed();
             logger.debug(`✗ Não enriquecido: ${progTitle}`);
           }
+          
+          // Limpar propriedades internas antes de retornar
+          delete enriched._wasEnriched;
+          delete enriched._enrichmentSource;
 
           return enriched;
         });
