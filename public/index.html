@@ -149,7 +149,11 @@
                         <h3>🔌 APIs de Metadados</h3>
                         <div class="form-group">
                             <label for="TMDB_API_KEY">TMDb API Key:</label>
-                            <input type="text" id="TMDB_API_KEY" name="TMDB_API_KEY" data-testid="input-tmdb-key">
+                            <div class="input-with-button">
+                                <input type="text" id="TMDB_API_KEY" name="TMDB_API_KEY" data-testid="input-tmdb-key">
+                                <button type="button" class="btn btn-test-small" id="btnTestTmdb" data-testid="btn-test-tmdb">Testar</button>
+                            </div>
+                            <span id="tmdbTestResult" class="test-result"></span>
                         </div>
                         <div class="form-group">
                             <label for="TVDB_API_KEY">TVDb API Key:</label>
@@ -161,7 +165,11 @@
                         </div>
                         <div class="form-group">
                             <label for="OMDB_API_KEY">OMDb API Key:</label>
-                            <input type="text" id="OMDB_API_KEY" name="OMDB_API_KEY" data-testid="input-omdb-key">
+                            <div class="input-with-button">
+                                <input type="text" id="OMDB_API_KEY" name="OMDB_API_KEY" data-testid="input-omdb-key">
+                                <button type="button" class="btn btn-test-small" id="btnTestOmdb" data-testid="btn-test-omdb">Testar</button>
+                            </div>
+                            <span id="omdbTestResult" class="test-result"></span>
                         </div>
                         <div class="form-group">
                             <label for="API_PRIORITY_ORDER">Ordem de Prioridade das APIs:</label>
