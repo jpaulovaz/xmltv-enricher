@@ -1,4 +1,11 @@
-require('dotenv').config();
+const path = require('path');
+
+// Carregar .env do diretório raiz do projeto (não de process.cwd())
+const envPath = path.resolve(__dirname, '..', '.env');
+require('dotenv').config({ path: envPath });
+
+console.log(`[Config] Carregando .env de: ${envPath}`);
+console.log(`[Config] TVHEADEND_URL: ${process.env.TVHEADEND_URL || 'não definido'}`);
 
 const getInt = (key, defaultVal) => {
   const value = parseInt(process.env[key], 10);
