@@ -172,9 +172,16 @@
                             <span id="omdbTestResult" class="test-result"></span>
                         </div>
                         <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="IMDB_ENABLED" name="IMDB_ENABLED" data-testid="checkbox-imdb-enabled">
+                                Habilitar IMDB (fallback)
+                            </label>
+                            <small>Usado apenas para títulos sem match nas outras APIs</small>
+                        </div>
+                        <div class="form-group">
                             <label for="API_PRIORITY_ORDER">Ordem de Prioridade das APIs:</label>
                             <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER" placeholder="plex,tvdb,tmdb,omdb" data-testid="input-api-priority">
-                            <small>Separado por vírgulas</small>
+                            <small>Separado por vírgulas. Opções: plex, plexdb, tvdb, tmdb, omdb, imdb</small>
                         </div>
                     </div>
 
