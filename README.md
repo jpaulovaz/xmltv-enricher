@@ -327,6 +327,38 @@ GET /api/stats
 }
 ```
 
+#### Ler Configurações
+```bash
+GET /api/config
+```
+**Resposta:**
+```json
+{
+  "TVHEADEND_URL": "http://localhost:9981",
+  "TMDB_API_KEY": "sua_chave",
+  "LOG_LEVEL": "info",
+  ...
+}
+```
+
+#### Salvar Configurações
+```bash
+POST /api/config
+Content-Type: application/json
+
+{
+  "TMDB_API_KEY": "nova_chave",
+  "LOG_LEVEL": "debug"
+}
+```
+**Resposta:**
+```json
+{
+  "success": true,
+  "message": "Configurações salvas. Reinicie o aplicativo para aplicar."
+}
+```
+
 📚 **Documentação completa**: [FEATURES.md](FEATURES.md)
 
 ---
