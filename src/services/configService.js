@@ -57,9 +57,12 @@ class ConfigService {
    */
   saveConfig(newConfig) {
     try {
+      console.log(`[ConfigService] Salvando configurações em: ${this.envPath}`);
+      
       // Validar configurações
       const validation = this._validateConfig(newConfig);
       if (!validation.valid) {
+        console.log(`[ConfigService] Validação falhou: ${validation.error}`);
         return { success: false, error: validation.error };
       }
 
@@ -71,6 +74,7 @@ class ConfigService {
       if (fs.existsSync(this.envPath)) {
         const backupPath = `${this.envPath}.backup`;
         fs.copyFileSync(this.envPath, backupPath);
+        console.log(`[ConfigService] Backup criado: ${backupPath}`);
       }
 
       // Construir conteúdo do .env
@@ -78,6 +82,13 @@ class ConfigService {
 
       // Salvar arquivo
       fs.writeFileSync(this.envPath, envContent, 'utf-8');
+      console.log(`[ConfigService] Arquivo salvo: ${this.envPath}`);
+      
+      // Verificar se o arquivo foi salvo
+      if (fs.existsSync(this.envPath)) {
+        const savedContent = fs.readFileSync(this.envPath, 'utf-8');
+        console.log(`[ConfigService] Arquivo salvo com ${savedContent.length} bytes`);
+      }
 
       // Atualizar process.env para aplicação imediata
       Object.keys(mergedConfig).forEach(key => {
@@ -88,11 +99,13 @@ class ConfigService {
       this.configCache = mergedConfig;
 
       logger.info('✅ Configurações salvas e aplicadas com sucesso');
+      logger.info(`📁 Arquivo: ${this.envPath}`);
 
       return { 
         success: true, 
         message: 'Configurações salvas com sucesso! Algumas mudanças (como porta do servidor) requerem reinício.',
-        appliedImmediately: true
+        appliedImmediately: true,
+        savedTo: this.envPath
       };
     } catch (error) {
       logger.error(`Erro ao salvar configurações: ${error.message}`);
