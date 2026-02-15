@@ -1,6 +1,8 @@
-# XMLTV Enricher
+# XMLTV Enricher v2.0 🎬
 
-**Versão:** 1.0.0
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D16-brightgreen)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/docker-supported-blue)](https://www.docker.com/)
 
 ## Visão Geral
 
