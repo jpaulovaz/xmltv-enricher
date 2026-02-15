@@ -557,11 +557,12 @@ Contribuições são bem-vindas!
 
 ## 📝 Changelog
 
-### v2.0.0 (2025-01-15)
+### v2.0.0 (2025-02-15)
 
 **🆕 Adicionado:**
-- Dashboard web interativo
-- REST API completa
+- Dashboard web interativo com duas abas (Dashboard e Configurações)
+- **Página de Configurações Web** - Edite todas as variáveis de ambiente via interface
+- REST API completa incluindo endpoints `/api/config` para GET/POST de configurações
 - Sistema de notificações (Discord/Slack/Genérico)
 - Backup automático com rotação
 - Modo dry-run
@@ -569,17 +570,22 @@ Contribuições são bem-vindas!
 - Docker e Docker Compose
 - CI/CD com GitHub Actions
 - Pause/resume do scheduler
-- Logs em tempo real via WebSocket
+- **Logs em tempo real via WebSocket** com filtros avançados:
+  - Auto-scroll
+  - Toggle para logs detalhados
+  - Filtro por nível (Info/Warn/Error/Debug)
 
 **🔄 Modificado:**
 - Enricher com coleta de estatísticas
 - Scheduler com controle de pausa
 - Estrutura de configuração expandida
+- ConfigService para gerenciar `.env` via API
 
 **📚 Documentação:**
 - FEATURES.md
 - DOCKER_SETUP.md
 - MIGRATION_GUIDE.md
+- README.md atualizado com seções detalhadas de Configurações e Logs
 
 ### v1.0.0 (2024-12-01)
 
