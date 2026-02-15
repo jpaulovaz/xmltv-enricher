@@ -179,6 +179,24 @@
                             <small>Usado apenas para títulos sem match nas outras APIs</small>
                         </div>
                         <div class="form-group">
+                            <label for="API_LANGUAGE">Idioma das APIs:</label>
+                            <select id="API_LANGUAGE" name="API_LANGUAGE" data-testid="select-api-language">
+                                <option value="pt-BR">Português (Brasil)</option>
+                                <option value="pt-PT">Português (Portugal)</option>
+                                <option value="en-US">English (US)</option>
+                                <option value="en-GB">English (UK)</option>
+                                <option value="es-ES">Español (España)</option>
+                                <option value="es-MX">Español (México)</option>
+                                <option value="fr-FR">Français</option>
+                                <option value="de-DE">Deutsch</option>
+                                <option value="it-IT">Italiano</option>
+                                <option value="ja-JP">日本語</option>
+                                <option value="ko-KR">한국어</option>
+                                <option value="zh-CN">中文 (简体)</option>
+                            </select>
+                            <small>Idioma para busca de metadados nas APIs (TMDb, etc.)</small>
+                        </div>
+                        <div class="form-group">
                             <label for="API_PRIORITY_ORDER">Ordem de Prioridade das APIs:</label>
                             <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER" placeholder="plex,tvdb,tmdb,omdb" data-testid="input-api-priority">
                             <small>Separado por vírgulas. Opções: plex, plexdb, tvdb, tmdb, omdb, imdb</small>
