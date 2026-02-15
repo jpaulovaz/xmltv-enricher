@@ -182,7 +182,11 @@
                             <input type="text" id="PLEX_TOKEN" name="PLEX_TOKEN" data-testid="input-plex-token">
                             <small>Encontre seu token em: Plex → Configurações → Conta → XML</small>
                         </div>
-                        <div class="form-group">
+                        <button type="button" class="btn btn-test" id="btnTestPlex" data-testid="btn-test-plex">
+                            🔌 Testar Conexão Plex
+                        </button>
+                        <span id="plexTestResult" class="test-result"></span>
+                        <div class="form-group" style="margin-top: 15px;">
                             <label>
                                 <input type="checkbox" id="PLEX_DB_ENABLED" name="PLEX_DB_ENABLED" data-testid="checkbox-plex-db">
                                 Habilitar acesso direto ao banco do Plex (PlexDB)
