@@ -2,6 +2,9 @@ const xmlParser = require('./xmlParser');
 const logger = require('./utils/logger');
 const MatchingService = require('./services/matchingService');
 const CacheService = require('./services/cacheService');
+const StatsService = require('./services/statsService');
+const NotificationService = require('./services/notificationService');
+const BackupService = require('./services/backupService');
 
 // Importar APIs
 const TMDbAPI = require('./apis/tmdb');
