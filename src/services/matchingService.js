@@ -89,7 +89,11 @@ class MatchingService {
             logger.info(`✓ Encontrado em cache: "${title}"`);
             this._writeToAudit(channelName, originalTitle, title, 100, cached.title, 'Cache');
             // Passa o activePlaceholder para usar se o cache não tiver imagem
-            return this._applyEnrichment(programme, cached, activePlaceholder);
+            const enrichedProg = this._applyEnrichment(programme, cached, activePlaceholder);
+            // Marcar como cache hit e enriquecido
+            enrichedProg._enrichmentSource = 'cache';
+            enrichedProg._wasEnriched = true;
+            return enrichedProg;
           } else {
             titlesToSkipApi.add(title);
           }
@@ -140,7 +144,11 @@ class MatchingService {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
       this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource);
-      return this._applyEnrichment(programme, bestEnriched, activePlaceholder);
+      const enrichedProg = this._applyEnrichment(programme, bestEnriched, activePlaceholder);
+      // Marcar como enriquecido via API
+      enrichedProg._enrichmentSource = finalSource;
+      enrichedProg._wasEnriched = true;
+      return enrichedProg;
     }
 
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
@@ -157,7 +165,11 @@ class MatchingService {
     }
 
     // Retorna o Placeholder Dinâmico
-    return this._applySmartPlaceholder(programme, activePlaceholder);
+    const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
+    // Marcar como NÃO enriquecido (usou placeholder)
+    placeholderProg._enrichmentSource = 'placeholder';
+    placeholderProg._wasEnriched = false;
+    return placeholderProg;
   }
 
   _writeToAudit(channel, original, search, confidence, resultTitle, source) {
