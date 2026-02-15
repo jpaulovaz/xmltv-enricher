@@ -475,6 +475,7 @@ function updateStats(stats) {
         document.getElementById('tmdbCalls').textContent = stats.apiCalls.tmdb || 0;
         document.getElementById('tvdbCalls').textContent = stats.apiCalls.tvdb || 0;
         document.getElementById('omdbCalls').textContent = stats.apiCalls.omdb || 0;
+        document.getElementById('imdbCalls').textContent = stats.apiCalls.imdb || 0;
         document.getElementById('plexCalls').textContent = stats.apiCalls.plex || 0;
         document.getElementById('plexdbCalls').textContent = stats.apiCalls.plexdb || 0;
     }
