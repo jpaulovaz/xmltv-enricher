@@ -14,6 +14,7 @@ services:
     # As configurações devem ser feitas via dashboard ou editando o .env diretamente
     environment:
       - NODE_ENV=production
+      - TZ=America/Sao_Paulo
     
     volumes:
       # IMPORTANTE: Montar o .env para que as configurações persistam
