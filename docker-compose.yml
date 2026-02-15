@@ -9,73 +9,29 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    
+    # Não definir variáveis de ambiente aqui para permitir que o .env seja usado
+    # As configurações devem ser feitas via dashboard ou editando o .env diretamente
     environment:
-      # Tvheadend
-      - TVHEADEND_URL=${TVHEADEND_URL:-http://localhost:9981}
-      - TVHEADEND_USERNAME=${TVHEADEND_USERNAME}
-      - TVHEADEND_PASSWORD=${TVHEADEND_PASSWORD}
-      
-      # APIs
-      - TVDB_API_KEY=${TVDB_API_KEY}
-      - TVDB_PIN=${TVDB_PIN}
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - OMDB_API_KEY=${OMDB_API_KEY}
-      - PLEX_URL=${PLEX_URL}
-      - PLEX_TOKEN=${PLEX_TOKEN}
-      - PLEX_DB_ENABLED=${PLEX_DB_ENABLED:-false}
-      - PLEX_DB_PATH=${PLEX_DB_PATH}
-      
-      # Prioridade de APIs
-      - API_PRIORITY_ORDER=${API_PRIORITY_ORDER:-plex,tvdb,tmdb,omdb}
-      
-      # Processamento
-      - SCHEDULE_INTERVAL_HOURS=${SCHEDULE_INTERVAL_HOURS:-12}
-      - CONCURRENCY_LIMIT=${CONCURRENCY_LIMIT:-3}
-      - RUN_ON_START=${RUN_ON_START:-true}
-      
-      # Cache
-      - CACHE_ENABLED=${CACHE_ENABLED:-true}
-      - CACHE_TTL_HOURS=${CACHE_TTL_HOURS:-24}
-      
-      # Matching
-      - MATCHING_ALGORITHM=${MATCHING_ALGORITHM:-jaro_winkler}
-      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD:-85}
-      
-      # Output
-      - OUTPUT_FILE_PATH=/app/output/xmltv.xml
-      - PLACEHOLDER_IMAGE_URL=${PLACEHOLDER_IMAGE_URL}
-      
-      # Logging
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_FILE=/var/log/xmltv-enricher.log
-      - DEBUG_URLS=${DEBUG_URLS:-false}
-      
-      # API Server
-      - API_PORT=3000
-      
-      # Backup
-      - BACKUP_ENABLED=${BACKUP_ENABLED:-true}
-      - BACKUP_DIR=/app/backups
-      - MAX_BACKUPS=${MAX_BACKUPS:-5}
-      
-      # Notificações
-      - WEBHOOK_URL=${WEBHOOK_URL}
-      - WEBHOOK_TYPE=${WEBHOOK_TYPE:-generic}
+      - NODE_ENV=production
     
     volumes:
+      # IMPORTANTE: Montar o .env para que as configurações persistam
+      - ./.env:/app/.env
+      
       # Persistir output XML
       - ./output:/app/output
       
       # Persistir backups
       - ./backups:/app/backups
       
-      # Persistir cache SQLite (apenas arquivos específicos, não todo /app)
+      # Persistir cache SQLite
       - ./data:/app/data
       
       # Persistir logs
       - ./logs:/var/log
       
-      # Se usar PlexDB, montar o banco
+      # Se usar PlexDB, montar o banco (descomente e ajuste o caminho)
       # - /path/to/plex/database:/plexdb:ro
     
     networks:
@@ -91,7 +47,3 @@ services:
 networks:
   xmltv-network:
     driver: bridge
-
-volumes:
-  xmltv-data:
-    driver: local
