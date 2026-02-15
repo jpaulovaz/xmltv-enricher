@@ -183,22 +183,77 @@ Acesse `http://localhost:3000` para ver:
 
 ### Funcionalidades do Dashboard
 
-- 📊 **Estatísticas em tempo real**
-  - Total de programas processados
-  - Taxa de sucesso
-  - Cache hits
-  - APIs utilizadas
+#### 📊 Estatísticas em Tempo Real
+- Total de programas processados
+- Taxa de sucesso
+- Cache hits
+- APIs utilizadas (TMDb, TVDb, OMDb, Plex, PlexDB)
 
-- 🎮 **Controles Interativos**
-  - ▶️ Executar agora
-  - 🧪 Dry run (teste)
-  - ⏸️ Pausar scheduler
-  - ▶️ Retomar scheduler
+#### 🎮 Controles Interativos
+- ▶️ **Executar Agora** - Inicia o enriquecimento imediatamente
+- 🧪 **Dry Run** - Teste sem salvar o arquivo final
+- ⏸️ **Pausar** - Pausa o scheduler automático
+- ▶️ **Retomar** - Retoma o scheduler pausado
 
-- 📝 **Logs em Tempo Real**
-  - WebSocket conectado
-  - Auto-scroll
-  - Filtros por nível
+#### 📝 Logs em Tempo Real
+- WebSocket conectado automaticamente
+- **Auto-scroll** - Segue automaticamente os novos logs
+- **Mostrar logs detalhados** - Toggle para ver/ocultar logs de debug
+- **Filtro por nível** - Todos, Info, Warn, Error, Debug
+- 🗑️ **Limpar** - Remove todos os logs da visualização
+
+---
+
+## ⚙️ Configurações Web (Novo v2.0)
+
+A nova aba **Configurações** permite editar TODAS as variáveis de ambiente diretamente pela interface, **sem necessidade de editar o arquivo `.env` manualmente**.
+
+### Como Usar
+
+1. Acesse o Dashboard: `http://localhost:3000`
+2. Clique na aba **"⚙️ Configurações"**
+3. Edite os campos desejados
+4. Clique em **"💾 Salvar Configurações"**
+5. **Reinicie o aplicativo** para aplicar as mudanças
+
+### Seções Disponíveis
+
+| Seção | Campos |
+|-------|--------|
+| 📡 **Tvheadend** | URL, Usuário, Senha |
+| 🔌 **APIs de Metadados** | TMDb Key, TVDb Key, TVDb PIN, OMDb Key, Prioridade |
+| ⚡ **Processamento** | Intervalo de agendamento, Concorrência, Executar ao iniciar |
+| 💾 **Cache** | Habilitar cache, TTL (horas) |
+| 💾 **Backup** | Habilitar backup, Máximo de backups |
+| 📨 **Notificações** | URL do Webhook, Tipo (Discord/Slack/Genérico) |
+| 📝 **Logging** | Nível de log (error/warn/info/debug) |
+
+### API de Configurações
+
+```bash
+# Ler configurações atuais
+GET /api/config
+
+# Salvar novas configurações
+POST /api/config
+Content-Type: application/json
+
+{
+  "TMDB_API_KEY": "sua_chave",
+  "LOG_LEVEL": "debug",
+  "SCHEDULE_INTERVAL_HOURS": "6"
+}
+```
+
+**Resposta de sucesso:**
+```json
+{
+  "success": true,
+  "message": "Configurações salvas. Reinicie o aplicativo para aplicar."
+}
+```
+
+> ⚠️ **Importante**: Após salvar as configurações, é necessário reiniciar o aplicativo para que as mudanças entrem em vigor.
 
 ---
 
