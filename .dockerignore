@@ -1,0 +1,66 @@
+# Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+/var/log/
+
+# Dados e cache
+data/
+cache_enricher.db*
+auditoria_enricher.csv
+stats.json
+diagnostico*.txt
+resultado_diagnostico.csv
+
+# Output e backups
+output/
+backups/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+tmp/
+temp/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.override.yml
+
+# Documentação de desenvolvimento
+*.md
+!README.md
+
+# Testes
+test/
+tests/
+*.test.js
+*.spec.js
+coverage/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
