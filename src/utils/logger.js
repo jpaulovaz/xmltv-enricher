@@ -2,10 +2,13 @@ const winston = require('winston');
 const path = require('path');
 const config = require('../config');
 const Transport = require('winston-transport');
+const fs = require('fs');
+
+// Default log file if not specified
+const logFile = config.logging.file || '/var/log/xmltv-enricher.log';
 
 // Criar diretório de logs se não existir
-const fs = require('fs');
-const logDir = path.dirname(config.logging.file);
+const logDir = path.dirname(logFile);
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
