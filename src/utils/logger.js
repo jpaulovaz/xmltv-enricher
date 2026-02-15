@@ -59,7 +59,7 @@ const logger = winston.createLogger({
     }),
     // Arquivo
     new winston.transports.File({
-      filename: config.logging.file,
+      filename: logFile,
       maxsize: 5242880, // 5MB
       maxFiles: 5
     }),
