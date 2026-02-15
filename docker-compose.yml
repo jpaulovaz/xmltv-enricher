@@ -31,8 +31,8 @@ services:
       # Persistir logs (mapeado para /app/logs dentro do container)
       - ./logs:/app/logs
       
-      # Persistir arquivo de auditoria
-      - ./auditoria_enricher.csv:/app/auditoria_enricher.csv
+      # Persistir arquivo de auditoria (diretório de relatórios)
+      - ./reports:/app/reports
       
       # Se usar PlexDB, montar o banco (descomente e ajuste o caminho)
       # - /path/to/plex/database:/plexdb:ro
