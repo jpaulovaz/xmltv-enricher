@@ -191,7 +191,20 @@ class MatchingService {
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
 
     const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${safeResult}";${source}\n`;
-    this.auditStream.write(line);
+    
+    // Escrever diretamente no arquivo para garantir persistência
+    try {
+      fs.appendFileSync(this.auditFilePath, line, 'utf-8');
+    } catch (e) {
+      logger.error(`Erro ao escrever auditoria: ${e.message}`);
+    }
+  }
+  
+  // Método para fechar o stream (chamado no final do processamento)
+  closeAuditStream() {
+    if (this.auditStream) {
+      this.auditStream.end();
+    }
   }
 
   saveAuditCSV() { }
