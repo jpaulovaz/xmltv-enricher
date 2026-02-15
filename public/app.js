@@ -208,8 +208,8 @@ configForm.addEventListener('submit', async (e) => {
         const result = await response.json();
         
         if (result.success) {
-            alert('✅ ' + result.message);
-            addLog('info', 'Configurações salvas com sucesso');
+            alert('✅ Configurações salvas com sucesso!\n\n⚠️ IMPORTANTE: Reinicie o container Docker para aplicar:\n\ndocker-compose restart');
+            addLog('info', 'Configurações salvas com sucesso. Reinicie o container para aplicar.');
         } else {
             alert('❌ Erro: ' + result.error);
             addLog('error', 'Erro ao salvar configurações: ' + result.error);
