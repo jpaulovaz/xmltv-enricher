@@ -5,6 +5,15 @@ const logger = require('../utils/logger');
 class ConfigService {
   constructor() {
     this.envPath = path.join(process.cwd(), '.env');
+    this.configCache = null;
+    this.apiServer = null;
+  }
+
+  /**
+   * Define referência ao apiServer para reload em tempo real
+   */
+  setApiServer(apiServer) {
+    this.apiServer = apiServer;
   }
 
   /**
@@ -28,7 +37,8 @@ class ConfigService {
         }
       });
 
-      return this._mergeWithDefaults(config);
+      this.configCache = this._mergeWithDefaults(config);
+      return this.configCache;
     } catch (error) {
       logger.error(`Erro ao ler configurações: ${error.message}`);
       return this._getDefaultConfig();
@@ -36,7 +46,7 @@ class ConfigService {
   }
 
   /**
-   * Salva configurações no .env
+   * Salva configurações no .env e atualiza process.env
    */
   saveConfig(newConfig) {
     try {
@@ -46,6 +56,10 @@ class ConfigService {
         return { success: false, error: validation.error };
       }
 
+      // Mesclar com configurações existentes
+      const currentConfig = this.readConfig();
+      const mergedConfig = { ...currentConfig, ...newConfig };
+
       // Criar backup do .env atual
       if (fs.existsSync(this.envPath)) {
         const backupPath = `${this.envPath}.backup`;
@@ -53,14 +67,26 @@ class ConfigService {
       }
 
       // Construir conteúdo do .env
-      const envContent = this._buildEnvContent(newConfig);
+      const envContent = this._buildEnvContent(mergedConfig);
 
       // Salvar arquivo
       fs.writeFileSync(this.envPath, envContent, 'utf-8');
 
-      logger.info('✅ Configurações salvas com sucesso');
+      // Atualizar process.env para aplicação imediata
+      Object.keys(mergedConfig).forEach(key => {
+        process.env[key] = mergedConfig[key];
+      });
 
-      return { success: true, message: 'Configurações salvas. Reinicie o aplicativo para aplicar.' };
+      // Atualizar cache
+      this.configCache = mergedConfig;
+
+      logger.info('✅ Configurações salvas e aplicadas com sucesso');
+
+      return { 
+        success: true, 
+        message: 'Configurações salvas com sucesso! Algumas mudanças (como porta do servidor) requerem reinício.',
+        appliedImmediately: true
+      };
     } catch (error) {
       logger.error(`Erro ao salvar configurações: ${error.message}`);
       return { success: false, error: error.message };
@@ -68,27 +94,168 @@ class ConfigService {
   }
 
   /**
+   * Testa conexão com Tvheadend
+   */
+  async testTvheadendConnection(url, username, password) {
+    const axios = require('axios');
+    try {
+      const testUrl = `${url}/api/serverinfo`;
+      const config = {};
+      
+      if (username && password) {
+        config.auth = { username, password };
+      }
+      config.timeout = 10000;
+
+      const response = await axios.get(testUrl, config);
+      return { 
+        success: true, 
+        message: 'Conexão com Tvheadend bem sucedida!',
+        version: response.data?.sw_version || 'Desconhecida'
+      };
+    } catch (error) {
+      let errorMsg = 'Falha ao conectar com Tvheadend';
+      if (error.code === 'ECONNREFUSED') {
+        errorMsg = 'Conexão recusada - verifique se o Tvheadend está rodando';
+      } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+        errorMsg = 'Timeout - servidor não respondeu';
+      } else if (error.response?.status === 401) {
+        errorMsg = 'Credenciais inválidas';
+      } else if (error.response?.status === 403) {
+        errorMsg = 'Acesso negado - verifique permissões';
+      }
+      return { success: false, message: errorMsg };
+    }
+  }
+
+  /**
+   * Testa conexão com Plex
+   */
+  async testPlexConnection(url, token) {
+    const axios = require('axios');
+    try {
+      const testUrl = `${url}/identity`;
+      const config = {
+        headers: { 'X-Plex-Token': token },
+        timeout: 10000
+      };
+
+      const response = await axios.get(testUrl, config);
+      return { 
+        success: true, 
+        message: 'Conexão com Plex bem sucedida!',
+        serverName: response.data?.MediaContainer?.friendlyName || 'Desconhecido'
+      };
+    } catch (error) {
+      let errorMsg = 'Falha ao conectar com Plex';
+      if (error.code === 'ECONNREFUSED') {
+        errorMsg = 'Conexão recusada - verifique se o Plex está rodando';
+      } else if (error.response?.status === 401) {
+        errorMsg = 'Token inválido';
+      }
+      return { success: false, message: errorMsg };
+    }
+  }
+
+  /**
+   * Testa API key do TMDb
+   */
+  async testTmdbApiKey(apiKey) {
+    const axios = require('axios');
+    try {
+      const testUrl = `https://api.themoviedb.org/3/configuration?api_key=${apiKey}`;
+      await axios.get(testUrl, { timeout: 10000 });
+      return { success: true, message: 'API Key do TMDb válida!' };
+    } catch (error) {
+      if (error.response?.status === 401) {
+        return { success: false, message: 'API Key inválida' };
+      }
+      return { success: false, message: 'Erro ao validar API Key' };
+    }
+  }
+
+  /**
+   * Testa API key do OMDb
+   */
+  async testOmdbApiKey(apiKey) {
+    const axios = require('axios');
+    try {
+      const testUrl = `http://www.omdbapi.com/?apikey=${apiKey}&t=test`;
+      const response = await axios.get(testUrl, { timeout: 10000 });
+      if (response.data?.Error === 'Invalid API key!') {
+        return { success: false, message: 'API Key inválida' };
+      }
+      return { success: true, message: 'API Key do OMDb válida!' };
+    } catch (error) {
+      return { success: false, message: 'Erro ao validar API Key' };
+    }
+  }
+
+  /**
    * Validar configurações
    */
   _validateConfig(config) {
-    // Validações básicas
-    if (config.API_PORT && (isNaN(config.API_PORT) || config.API_PORT < 1 || config.API_PORT > 65535)) {
-      return { valid: false, error: 'Porta da API inválida (deve ser entre 1 e 65535)' };
+    const errors = [];
+
+    // Validar URL do Tvheadend
+    if (config.TVHEADEND_URL && !this._isValidUrl(config.TVHEADEND_URL)) {
+      errors.push('URL do Tvheadend inválida');
     }
 
-    if (config.SCHEDULE_INTERVAL_HOURS && (isNaN(config.SCHEDULE_INTERVAL_HOURS) || config.SCHEDULE_INTERVAL_HOURS < 1)) {
-      return { valid: false, error: 'Intervalo de agendamento inválido (mínimo 1 hora)' };
+    // Validar URL do Plex
+    if (config.PLEX_URL && !this._isValidUrl(config.PLEX_URL)) {
+      errors.push('URL do Plex inválida');
     }
 
-    if (config.CONCURRENCY_LIMIT && (isNaN(config.CONCURRENCY_LIMIT) || config.CONCURRENCY_LIMIT < 1)) {
-      return { valid: false, error: 'Limite de concorrência inválido (mínimo 1)' };
+    // Validar porta
+    if (config.API_PORT) {
+      const port = parseInt(config.API_PORT, 10);
+      if (isNaN(port) || port < 1 || port > 65535) {
+        errors.push('Porta da API inválida (deve ser entre 1 e 65535)');
+      }
     }
 
-    if (config.CONFIDENCE_THRESHOLD && (isNaN(config.CONFIDENCE_THRESHOLD) || config.CONFIDENCE_THRESHOLD < 0 || config.CONFIDENCE_THRESHOLD > 100)) {
-      return { valid: false, error: 'Threshold de confiança inválido (0-100)' };
+    // Validar intervalo de agendamento
+    if (config.SCHEDULE_INTERVAL_HOURS) {
+      const hours = parseInt(config.SCHEDULE_INTERVAL_HOURS, 10);
+      if (isNaN(hours) || hours < 1) {
+        errors.push('Intervalo de agendamento inválido (mínimo 1 hora)');
+      }
+    }
+
+    // Validar concorrência
+    if (config.CONCURRENCY_LIMIT) {
+      const limit = parseInt(config.CONCURRENCY_LIMIT, 10);
+      if (isNaN(limit) || limit < 1 || limit > 10) {
+        errors.push('Limite de concorrência inválido (1-10)');
+      }
+    }
+
+    // Validar threshold de confiança
+    if (config.CONFIDENCE_THRESHOLD) {
+      const threshold = parseInt(config.CONFIDENCE_THRESHOLD, 10);
+      if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+        errors.push('Threshold de confiança inválido (0-100)');
+      }
+    }
+
+    if (errors.length > 0) {
+      return { valid: false, error: errors.join('; ') };
     }
 
     return { valid: true };
+  }
+
+  /**
+   * Validar URL
+   */
+  _isValidUrl(string) {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /**
@@ -129,7 +296,7 @@ class ConfigService {
   }
 
   /**
-   * Configurações padrão
+   * Configurações padrão - RUN_ON_START = false por padrão
    */
   _getDefaultConfig() {
     return {
@@ -147,7 +314,7 @@ class ConfigService {
       API_PRIORITY_ORDER: 'plex,tvdb,tmdb,omdb',
       SCHEDULE_INTERVAL_HOURS: '12',
       CONCURRENCY_LIMIT: '3',
-      RUN_ON_START: 'true',
+      RUN_ON_START: 'false',
       CACHE_ENABLED: 'true',
       CACHE_TTL_HOURS: '24',
       MATCHING_ALGORITHM: 'jaro_winkler',
