@@ -307,7 +307,7 @@ class ConfigService {
   _buildEnvContent(config) {
     const sections = {
       'Tvheadend': ['TVHEADEND_URL', 'TVHEADEND_USERNAME', 'TVHEADEND_PASSWORD'],
-      'APIs de Metadados': ['TVDB_API_KEY', 'TVDB_PIN', 'TMDB_API_KEY', 'OMDB_API_KEY', 'PLEX_URL', 'PLEX_TOKEN', 'PLEX_DB_ENABLED', 'PLEX_DB_PATH'],
+      'APIs de Metadados': ['TVDB_API_KEY', 'TVDB_PIN', 'TMDB_API_KEY', 'OMDB_API_KEY', 'IMDB_ENABLED', 'PLEX_URL', 'PLEX_TOKEN', 'PLEX_DB_ENABLED', 'PLEX_DB_PATH'],
       'Prioridade de APIs': ['API_PRIORITY_ORDER'],
       'Processamento': ['SCHEDULE_INTERVAL_HOURS', 'CONCURRENCY_LIMIT', 'RUN_ON_START'],
       'Cache': ['CACHE_ENABLED', 'CACHE_TTL_HOURS'],
