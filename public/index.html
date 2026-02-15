@@ -90,17 +90,17 @@
             <div class="card">
                 <h2>📝 Logs em Tempo Real</h2>
                 <div class="log-controls">
-                    <button id="btnClearLogs" class="btn btn-small">🗑️ Limpar</button>
+                    <button id="btnClearLogs" class="btn btn-small" data-testid="btn-clear-logs">🗑️ Limpar</button>
                     <label>
-                        <input type="checkbox" id="autoScroll" checked>
+                        <input type="checkbox" id="autoScroll" data-testid="checkbox-autoscroll" checked>
                         Auto-scroll
                     </label>
                     <label>
-                        <input type="checkbox" id="showDebug" checked>
+                        <input type="checkbox" id="showDebug" data-testid="checkbox-show-debug" checked>
                         Mostrar logs detalhados
                     </label>
                     <label>
-                        <select id="logLevelFilter">
+                        <select id="logLevelFilter" data-testid="select-log-level">
                             <option value="all">Todos os níveis</option>
                             <option value="info">Info</option>
                             <option value="warn">Warn</option>
@@ -109,7 +109,7 @@
                         </select>
                     </label>
                 </div>
-                <div id="logsContainer" class="logs"></div>
+                <div id="logsContainer" class="logs" data-testid="logs-container"></div>
             </div>
         </div>
 
