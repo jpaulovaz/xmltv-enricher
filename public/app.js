@@ -361,8 +361,6 @@ btnTestOmdb.addEventListener('click', async () => {
         btnTestOmdb.disabled = false;
     }
 });
-    }
-});
 
 // ============================================
 // STATE UPDATE
