@@ -4,6 +4,7 @@ const logger = require('./utils/logger');
 const Enricher = require('./enricher');
 
 let task = null;
+let isPaused = false;
 
 const start = () => {
   if (task) {
@@ -22,6 +23,11 @@ const start = () => {
   logger.info(`Agendador iniciado. Execução programada a cada ${hours} horas (Cron: "${cronExpression}")`);
 
   task = cron.schedule(cronExpression, async () => {
+    if (isPaused) {
+      logger.info('⏸️ Scheduler pausado. Execução ignorada.');
+      return;
+    }
+
     logger.info('⏳ Iniciando execução agendada do Enricher...');
     try {
       // Instancia o Enricher com a configuração global
@@ -37,11 +43,37 @@ const stop = () => {
   if (task) {
     task.stop();
     task = null;
+    isPaused = false;
     logger.info('Scheduler parado.');
   }
 };
 
+const pause = () => {
+  if (!task) {
+    logger.warn('Scheduler não está rodando.');
+    return false;
+  }
+  isPaused = true;
+  logger.info('⏸️ Scheduler pausado.');
+  return true;
+};
+
+const resume = () => {
+  if (!task) {
+    logger.warn('Scheduler não está rodando.');
+    return false;
+  }
+  isPaused = false;
+  logger.info('▶️ Scheduler retomado.');
+  return true;
+};
+
+const isPausedStatus = () => isPaused;
+
 module.exports = {
   start,
-  stop
+  stop,
+  pause,
+  resume,
+  isPausedStatus
 };
