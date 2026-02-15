@@ -30,15 +30,25 @@ const getBool = (key, defaultVal = false) => {
   return value === 'true';
 };
 
-// Função que gera o objeto de configuração com valores atuais do process.env
-function getConfig() {
-  return {
-    tvheadend: {
+// Objeto de configuração que sempre lê os valores atuais de process.env
+// usando getters para garantir valores dinâmicos
+const config = {
+  // Propriedades estáticas (não mudam)
+  envPath: envPath,
+  loadEnv: loadEnv,
+  
+  // Getter para tvheadend - sempre retorna valores atualizados
+  get tvheadend() {
+    return {
       url: process.env.TVHEADEND_URL || 'http://localhost:9981',
       user: process.env.TVHEADEND_USERNAME || '',
       pass: process.env.TVHEADEND_PASSWORD || ''
-    },
-    api: {
+    };
+  },
+  
+  // Getter para api
+  get api() {
+    return {
       priority: (process.env.API_PRIORITY_ORDER || 'plex,tvdb,tmdb,omdb').split(','),
       tmdb: { key: process.env.TMDB_API_KEY || '' },
       tvdb: { key: process.env.TVDB_API_KEY || '', pin: process.env.TVDB_PIN || '' },
@@ -50,54 +60,50 @@ function getConfig() {
         dbEnabled: getBool('PLEX_DB_ENABLED', false),
         dbPath: process.env.PLEX_DB_PATH || ''
       }
-    },
-    output: {
+    };
+  },
+  
+  // Getter para output
+  get output() {
+    return {
       path: process.env.OUTPUT_FILE_PATH || './xmltv.xml',
       placeholderImage: process.env.PLACEHOLDER_IMAGE_URL || ''
-    },
-    processing: {
+    };
+  },
+  
+  // Getter para processing
+  get processing() {
+    return {
       concurrency: getInt('CONCURRENCY_LIMIT', 1),
       scheduleHours: getInt('SCHEDULE_INTERVAL_HOURS', 12)
-    },
-    matching: {
+    };
+  },
+  
+  // Getter para matching
+  get matching() {
+    return {
       algorithm: process.env.MATCHING_ALGORITHM || 'jaro_winkler',
       confidenceThreshold: getInt('CONFIDENCE_THRESHOLD', 85)
-    },
-    cache: {
+    };
+  },
+  
+  // Getter para cache
+  get cache() {
+    return {
       enabled: getBool('CACHE_ENABLED', true),
       ttlHours: getInt('CACHE_TTL_HOURS', 24)
-    },
-    logging: {
+    };
+  },
+  
+  // Getter para logging
+  get logging() {
+    return {
       level: process.env.LOG_LEVEL || 'info',
       file: process.env.LOG_FILE || '',
       debugUrls: getBool('DEBUG_URLS', false)
-    }
-  };
-}
-
-// Exportar tanto a função getConfig quanto um objeto config dinâmico via Proxy
-// O Proxy garante que sempre que alguém acessa config.xxx, pegue o valor atual do process.env
-const configProxy = new Proxy({}, {
-  get(target, prop) {
-    const currentConfig = getConfig();
-    return currentConfig[prop];
-  },
-  ownKeys() {
-    return Object.keys(getConfig());
-  },
-  getOwnPropertyDescriptor(target, prop) {
-    const currentConfig = getConfig();
-    if (prop in currentConfig) {
-      return { enumerable: true, configurable: true, value: currentConfig[prop] };
-    }
-    return undefined;
+    };
   }
-});
+};
 
-// Adicionar propriedades estáticas ao proxy
-configProxy.getConfig = getConfig;
-configProxy.loadEnv = loadEnv;
-configProxy.envPath = envPath;
-
-// Exportar
-module.exports = configProxy;
+// Exportar o objeto config
+module.exports = config;
