@@ -41,6 +41,12 @@ Análise completa do aplicativo GitHub `xmltv-enricher` para identificar oportun
 - **README.md**: Atualizado com documentação das novas funcionalidades
 - **data-testid**: Adicionados aos elementos HTML para melhor testabilidade
 
+### Session 3 - Correções
+- **Seção Plex adicionada**: Campos para URL, Token, PlexDB habilitado e caminho do banco
+- **Aviso de reinício melhorado**: Mensagem clara sobre `docker-compose restart`
+- **Alerta ao salvar**: Popup com instruções de reinício do Docker
+- **Bug fix logger.js**: Fallback para LOG_FILE quando não definido
+
 ## Technical Architecture
 ```
 /app
