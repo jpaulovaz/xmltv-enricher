@@ -242,6 +242,40 @@
                         </div>
                     </div>
 
+                    <!-- Matching -->
+                    <div class="config-section">
+                        <h3>🎯 Matching de Títulos</h3>
+                        <div class="form-group">
+                            <label for="MATCHING_ALGORITHM">Algoritmo de Matching:</label>
+                            <select id="MATCHING_ALGORITHM" name="MATCHING_ALGORITHM" data-testid="select-matching-algorithm">
+                                <option value="jaro_winkler">Jaro-Winkler (recomendado)</option>
+                                <option value="levenshtein">Levenshtein</option>
+                                <option value="dice">Dice Coefficient</option>
+                            </select>
+                            <small>Algoritmo usado para comparar títulos de programas</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="CONFIDENCE_THRESHOLD">Limite de Confiança (%):</label>
+                            <input type="number" id="CONFIDENCE_THRESHOLD" name="CONFIDENCE_THRESHOLD" min="0" max="100" data-testid="input-confidence-threshold">
+                            <small>Percentual mínimo de similaridade para aceitar um match (0-100)</small>
+                        </div>
+                    </div>
+
+                    <!-- Output -->
+                    <div class="config-section">
+                        <h3>📤 Saída</h3>
+                        <div class="form-group">
+                            <label for="OUTPUT_FILE_PATH">Caminho do Arquivo XML:</label>
+                            <input type="text" id="OUTPUT_FILE_PATH" name="OUTPUT_FILE_PATH" placeholder="./output/xmltv.xml" data-testid="input-output-path">
+                            <small>Caminho onde o arquivo XMLTV enriquecido será salvo</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="PLACEHOLDER_IMAGE_URL">URL da Imagem Placeholder:</label>
+                            <input type="text" id="PLACEHOLDER_IMAGE_URL" name="PLACEHOLDER_IMAGE_URL" placeholder="https://via.placeholder.com/300x450?text=Sem+Capa" data-testid="input-placeholder-url">
+                            <small>Imagem de fallback quando não encontrar capa</small>
+                        </div>
+                    </div>
+
                     <!-- Backup -->
                     <div class="config-section">
                         <h3>💾 Backup</h3>
