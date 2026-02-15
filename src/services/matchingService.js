@@ -31,7 +31,13 @@ class MatchingService {
     );
     this.threshold = configArg.matching.confidenceThreshold;
 
-    this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
+    // Diretório de relatórios (para persistência com Docker)
+    const reportsDir = path.join(process.cwd(), 'reports');
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+    
+    this.auditFilePath = path.join(reportsDir, 'auditoria_enricher.csv');
     // Sempre recriar o arquivo de auditoria no início de cada execução
     fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
