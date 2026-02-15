@@ -4,10 +4,10 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copiar package files
-COPY package.json yarn.lock* ./
+COPY package.json ./
 
-# Instalar dependências
-RUN yarn install --frozen-lockfile --production=false
+# Instalar dependências (sem frozen-lockfile pois não temos yarn.lock)
+RUN yarn install --network-timeout 100000
 
 # Copiar código fonte
 COPY . .
