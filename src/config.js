@@ -94,8 +94,10 @@ const configProxy = new Proxy({}, {
   }
 });
 
+// Adicionar propriedades estáticas ao proxy
+configProxy.getConfig = getConfig;
+configProxy.loadEnv = loadEnv;
+configProxy.envPath = envPath;
+
 // Exportar
 module.exports = configProxy;
-module.exports.getConfig = getConfig;
-module.exports.loadEnv = loadEnv;
-module.exports.envPath = envPath;
