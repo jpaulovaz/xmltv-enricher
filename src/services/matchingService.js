@@ -180,9 +180,10 @@ class MatchingService {
 
   _applyEnrichment(programme, data, placeholder) {
     const prog = { ...programme };
+    const lang = config.api.language || 'pt-BR';
     // Usa a imagem da API ou o placeholder dinâmico
     prog.icon = [{ $: { src: data.image || placeholder } }];
-    if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: 'pt-BR' } }));
+    if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: lang } }));
     if (data.year) prog.date = [data.year.toString()];
     if (data.rating) prog.rating = [{ value: [data.rating], $: { system: 'BR' } }];
 
