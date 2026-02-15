@@ -80,6 +80,8 @@ O enricher consulta múltiplas APIs com fallback inteligente:
 
 ### v2.0
 - ✅ Dashboard web interativo (porta 3000)
+- ✅ **Página de Configurações** (edite via interface, sem mexer em arquivos)
+- ✅ **Botões de Teste de Conexão** (Tvheadend, Plex, TMDb, OMDb)
 - ✅ API REST para automação
 - ✅ Logs em tempo real via WebSocket
 - ✅ Sistema de backup com rotação
@@ -99,16 +101,21 @@ O enricher consulta múltiplas APIs com fallback inteligente:
 git clone https://github.com/jpaulovaz/xmltv-enricher.git
 cd xmltv-enricher
 
-# 2. Configurar variáveis
+# 2. Criar arquivo de configuração
 cp .env.example .env
-# Edite .env com suas chaves de API
 
-# 3. Iniciar
+# 3. Criar diretórios
+mkdir -p output backups data logs
+
+# 4. Iniciar
 docker-compose up -d
 
-# 4. Acessar dashboard
+# 5. Acessar dashboard e configurar
 # http://localhost:3000
+# Clique em "Configurações" para definir suas APIs e Tvheadend
 ```
+
+> **💡 Dica**: Não precisa editar o .env manualmente! Use o Dashboard para configurar tudo.
 
 **Pronto!** 🎉
 
