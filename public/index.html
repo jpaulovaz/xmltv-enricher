@@ -10,88 +10,250 @@
     <div class="container">
         <header>
             <h1>📺 XMLTV Enricher</h1>
-            <div class="status-badge" id="statusBadge">
-                <span class="status-dot"></span>
-                <span id="statusText">Carregando...</span>
+            <div class="header-controls">
+                <div class="status-badge" id="statusBadge">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Carregando...</span>
+                </div>
             </div>
         </header>
 
-        <div class="grid">
-            <!-- Controles -->
-            <div class="card">
-                <h2>🎮 Controles</h2>
-                <div class="controls">
-                    <button id="btnRunNow" class="btn btn-primary">▶️ Executar Agora</button>
-                    <button id="btnRunDryRun" class="btn btn-secondary">🧪 Dry Run</button>
-                    <button id="btnPause" class="btn btn-warning">⏸️ Pausar</button>
-                    <button id="btnResume" class="btn btn-success">▶️ Retomar</button>
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-button active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="tab-button" data-tab="settings">⚙️ Configurações</button>
+        </div>
+
+        <!-- Tab Content: Dashboard -->
+        <div id="dashboard" class="tab-content active">
+            <div class="grid">
+                <!-- Controles -->
+                <div class="card">
+                    <h2>🎮 Controles</h2>
+                    <div class="controls">
+                        <button id="btnRunNow" class="btn btn-primary">▶️ Executar Agora</button>
+                        <button id="btnRunDryRun" class="btn btn-secondary">🧪 Dry Run</button>
+                        <button id="btnPause" class="btn btn-warning">⏸️ Pausar</button>
+                        <button id="btnResume" class="btn btn-success">▶️ Retomar</button>
+                    </div>
+                    <div class="info">
+                        <p><strong>Última Execução:</strong> <span id="lastRun">-</span></p>
+                        <p><strong>Scheduler:</strong> <span id="schedulerStatus">-</span></p>
+                    </div>
                 </div>
-                <div class="info">
-                    <p><strong>Última Execução:</strong> <span id="lastRun">-</span></p>
-                    <p><strong>Scheduler:</strong> <span id="schedulerStatus">-</span></p>
+
+                <!-- Estatísticas -->
+                <div class="card">
+                    <h2>📊 Estatísticas da Última Execução</h2>
+                    <div id="statsContainer" class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalPrograms">-</div>
+                            <div class="stat-label">Total de Programas</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="enrichedPrograms">-</div>
+                            <div class="stat-label">Enriquecidos</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="successRate">-</div>
+                            <div class="stat-label">Taxa de Sucesso</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="duration">-</div>
+                            <div class="stat-label">Duração (s)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="cacheHits">-</div>
+                            <div class="stat-label">Cache Hits</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="cacheHitRate">-</div>
+                            <div class="stat-label">Taxa de Cache</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Estatísticas -->
+            <!-- APIs Utilizadas -->
             <div class="card">
-                <h2>📊 Estatísticas da Última Execução</h2>
-                <div id="statsContainer" class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-value" id="totalPrograms">-</div>
-                        <div class="stat-label">Total de Programas</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="enrichedPrograms">-</div>
-                        <div class="stat-label">Enriquecidos</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="successRate">-</div>
-                        <div class="stat-label">Taxa de Sucesso</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="duration">-</div>
-                        <div class="stat-label">Duração (s)</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="cacheHits">-</div>
-                        <div class="stat-label">Cache Hits</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="cacheHitRate">-</div>
-                        <div class="stat-label">Taxa de Cache</div>
-                    </div>
+                <h2>🔌 APIs Utilizadas</h2>
+                <div id="apiCallsContainer" class="api-calls">
+                    <span class="api-badge">TMDb: <strong id="tmdbCalls">0</strong></span>
+                    <span class="api-badge">TVDb: <strong id="tvdbCalls">0</strong></span>
+                    <span class="api-badge">OMDb: <strong id="omdbCalls">0</strong></span>
+                    <span class="api-badge">Plex: <strong id="plexCalls">0</strong></span>
+                    <span class="api-badge">PlexDB: <strong id="plexdbCalls">0</strong></span>
                 </div>
+            </div>
+
+            <!-- Logs em Tempo Real -->
+            <div class="card">
+                <h2>📝 Logs em Tempo Real</h2>
+                <div class="log-controls">
+                    <button id="btnClearLogs" class="btn btn-small">🗑️ Limpar</button>
+                    <label>
+                        <input type="checkbox" id="autoScroll" checked>
+                        Auto-scroll
+                    </label>
+                    <label>
+                        <input type="checkbox" id="showDebug" checked>
+                        Mostrar logs detalhados
+                    </label>
+                    <label>
+                        <select id="logLevelFilter">
+                            <option value="all">Todos os níveis</option>
+                            <option value="info">Info</option>
+                            <option value="warn">Warn</option>
+                            <option value="error">Error</option>
+                            <option value="debug">Debug</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="logsContainer" class="logs"></div>
             </div>
         </div>
 
-        <!-- APIs Utilizadas -->
-        <div class="card">
-            <h2>🔌 APIs Utilizadas</h2>
-            <div id="apiCallsContainer" class="api-calls">
-                <span class="api-badge">TMDb: <strong id="tmdbCalls">0</strong></span>
-                <span class="api-badge">TVDb: <strong id="tvdbCalls">0</strong></span>
-                <span class="api-badge">OMDb: <strong id="omdbCalls">0</strong></span>
-                <span class="api-badge">Plex: <strong id="plexCalls">0</strong></span>
-                <span class="api-badge">PlexDB: <strong id="plexdbCalls">0</strong></span>
-            </div>
-        </div>
+        <!-- Tab Content: Settings -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <h2>⚙️ Configurações do Sistema</h2>
+                <p class="info-text">⚠️ Após salvar as configurações, <strong>reinicie o aplicativo</strong> para aplicar as mudanças.</p>
+                
+                <form id="configForm">
+                    <!-- Tvheadend -->
+                    <div class="config-section">
+                        <h3>📡 Tvheadend</h3>
+                        <div class="form-group">
+                            <label for="TVHEADEND_URL">URL do Tvheadend:</label>
+                            <input type="text" id="TVHEADEND_URL" name="TVHEADEND_URL" placeholder="http://localhost:9981">
+                        </div>
+                        <div class="form-group">
+                            <label for="TVHEADEND_USERNAME">Usuário:</label>
+                            <input type="text" id="TVHEADEND_USERNAME" name="TVHEADEND_USERNAME">
+                        </div>
+                        <div class="form-group">
+                            <label for="TVHEADEND_PASSWORD">Senha:</label>
+                            <input type="password" id="TVHEADEND_PASSWORD" name="TVHEADEND_PASSWORD">
+                        </div>
+                    </div>
 
-        <!-- Logs em Tempo Real -->
-        <div class="card">
-            <h2>📝 Logs em Tempo Real</h2>
-            <div class="log-controls">
-                <button id="btnClearLogs" class="btn btn-small">🗑️ Limpar</button>
-                <label>
-                    <input type="checkbox" id="autoScroll" checked>
-                    Auto-scroll
-                </label>
+                    <!-- APIs -->
+                    <div class="config-section">
+                        <h3>🔌 APIs de Metadados</h3>
+                        <div class="form-group">
+                            <label for="TMDB_API_KEY">TMDb API Key:</label>
+                            <input type="text" id="TMDB_API_KEY" name="TMDB_API_KEY">
+                        </div>
+                        <div class="form-group">
+                            <label for="TVDB_API_KEY">TVDb API Key:</label>
+                            <input type="text" id="TVDB_API_KEY" name="TVDB_API_KEY">
+                        </div>
+                        <div class="form-group">
+                            <label for="TVDB_PIN">TVDb PIN:</label>
+                            <input type="text" id="TVDB_PIN" name="TVDB_PIN">
+                        </div>
+                        <div class="form-group">
+                            <label for="OMDB_API_KEY">OMDb API Key:</label>
+                            <input type="text" id="OMDB_API_KEY" name="OMDB_API_KEY">
+                        </div>
+                        <div class="form-group">
+                            <label for="API_PRIORITY_ORDER">Ordem de Prioridade das APIs:</label>
+                            <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER" placeholder="plex,tvdb,tmdb,omdb">
+                            <small>Separado por vírgulas</small>
+                        </div>
+                    </div>
+
+                    <!-- Processamento -->
+                    <div class="config-section">
+                        <h3>⚡ Processamento</h3>
+                        <div class="form-group">
+                            <label for="SCHEDULE_INTERVAL_HOURS">Intervalo de Agendamento (horas):</label>
+                            <input type="number" id="SCHEDULE_INTERVAL_HOURS" name="SCHEDULE_INTERVAL_HOURS" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="CONCURRENCY_LIMIT">Limite de Concorrência:</label>
+                            <input type="number" id="CONCURRENCY_LIMIT" name="CONCURRENCY_LIMIT" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="RUN_ON_START" name="RUN_ON_START">
+                                Executar ao iniciar
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Cache -->
+                    <div class="config-section">
+                        <h3>💾 Cache</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="CACHE_ENABLED" name="CACHE_ENABLED">
+                                Habilitar cache
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="CACHE_TTL_HOURS">TTL do Cache (horas):</label>
+                            <input type="number" id="CACHE_TTL_HOURS" name="CACHE_TTL_HOURS" min="1">
+                        </div>
+                    </div>
+
+                    <!-- Backup -->
+                    <div class="config-section">
+                        <h3>💾 Backup</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="BACKUP_ENABLED" name="BACKUP_ENABLED">
+                                Habilitar backup automático
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="MAX_BACKUPS">Máximo de backups:</label>
+                            <input type="number" id="MAX_BACKUPS" name="MAX_BACKUPS" min="1">
+                        </div>
+                    </div>
+
+                    <!-- Notificações -->
+                    <div class="config-section">
+                        <h3>📨 Notificações</h3>
+                        <div class="form-group">
+                            <label for="WEBHOOK_URL">URL do Webhook:</label>
+                            <input type="text" id="WEBHOOK_URL" name="WEBHOOK_URL" placeholder="https://discord.com/api/webhooks/...">
+                        </div>
+                        <div class="form-group">
+                            <label for="WEBHOOK_TYPE">Tipo de Webhook:</label>
+                            <select id="WEBHOOK_TYPE" name="WEBHOOK_TYPE">
+                                <option value="generic">Genérico</option>
+                                <option value="discord">Discord</option>
+                                <option value="slack">Slack</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Logging -->
+                    <div class="config-section">
+                        <h3>📝 Logging</h3>
+                        <div class="form-group">
+                            <label for="LOG_LEVEL">Nível de Log:</label>
+                            <select id="LOG_LEVEL" name="LOG_LEVEL">
+                                <option value="error">Error</option>
+                                <option value="warn">Warn</option>
+                                <option value="info">Info</option>
+                                <option value="debug">Debug</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">💾 Salvar Configurações</button>
+                        <button type="button" id="btnResetConfig" class="btn btn-secondary">🔄 Resetar</button>
+                    </div>
+                </form>
             </div>
-            <div id="logsContainer" class="logs"></div>
         </div>
     </div>
 
     <footer>
-        <p>XMLTV Enricher v1.0.0 | <a href="https://github.com" target="_blank">GitHub</a></p>
+        <p>XMLTV Enricher v2.0 | <a href="https://github.com/jpaulovaz/xmltv-enricher" target="_blank">GitHub</a></p>
     </footer>
 
     <script src="/socket.io/socket.io.js"></script>
