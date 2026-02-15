@@ -3,11 +3,16 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Instalar dependências de build
+RUN apk add --no-cache python3 make g++
+
 # Copiar package files
 COPY package.json ./
 
 # Instalar dependências (sem frozen-lockfile pois não temos yarn.lock)
-RUN yarn install --network-timeout 100000
+# Aumentar timeout para evitar erros de rede
+RUN yarn install --network-timeout 100000 || \
+    (echo "Retry installing dependencies..." && yarn install --network-timeout 100000)
 
 # Copiar código fonte
 COPY . .
