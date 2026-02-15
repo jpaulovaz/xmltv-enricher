@@ -367,7 +367,7 @@ class ConfigService {
       OUTPUT_FILE_PATH: './output/xmltv.xml',
       PLACEHOLDER_IMAGE_URL: 'https://via.placeholder.com/300x450?text=Sem+Capa',
       LOG_LEVEL: 'info',
-      LOG_FILE: './xmltv-enricher.log',
+      LOG_FILE: './logs/xmltv-enricher.log',
       DEBUG_URLS: 'false',
       API_PORT: '3000',
       BACKUP_ENABLED: 'true',
