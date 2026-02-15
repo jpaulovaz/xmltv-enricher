@@ -50,6 +50,7 @@ const config = {
   get api() {
     return {
       priority: (process.env.API_PRIORITY_ORDER || 'plex,tvdb,tmdb,omdb').split(','),
+      language: process.env.API_LANGUAGE || 'pt-BR',
       tmdb: { key: process.env.TMDB_API_KEY || '' },
       tvdb: { key: process.env.TVDB_API_KEY || '', pin: process.env.TVDB_PIN || '' },
       omdb: { key: process.env.OMDB_API_KEY || '' },
