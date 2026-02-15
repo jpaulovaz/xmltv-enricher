@@ -51,10 +51,16 @@ class Enricher {
     );
   }
 
-  async run() {
-    try {
-      logger.info('Iniciando processo de enriquecimento...');
+  async run(dryRun = false, apiServer = null) {
+    const statsService = new StatsService();
+    const notificationService = new NotificationService(this.config);
+    const backupService = new BackupService(this.config);
 
+    try {
+      statsService.start();
+      logger.info(`Iniciando processo de enriquecimento${dryRun ? ' (DRY RUN)' : ''}...`);
+
+      if (apiServer) apiServer.emitLog('info', 'Inicializando conexões de API...');
       logger.info('Inicializando conexões de API...');
       for (const api of this.matchingService.apis) {
         if (api.initialize) {
@@ -62,9 +68,15 @@ class Enricher {
         }
       }
 
+      // Criar backup antes de processar
+      if (!dryRun) {
+        backupService.backup();
+      }
+
       // 1. Baixar/Ler XML
       const xmlData = await xmlParser.fetchXml(this.config.tvheadend);
       logger.info(`XML baixado com sucesso (${xmlData.length} bytes)`);
+      if (apiServer) apiServer.emitLog('info', `XML baixado: ${xmlData.length} bytes`);
 
       // 2. Parse XML
       const result = await xmlParser.parseXml(xmlData);
@@ -91,6 +103,8 @@ class Enricher {
       // -----------------------------------------------------
 
       logger.info(`Total de programas a enriquecer: ${programmes.length}`);
+      statsService.stats.totalPrograms = programmes.length;
+      if (apiServer) apiServer.emitLog('info', `Processando ${programmes.length} programas...`);
 
       // 3. Enriquecimento
       const enrichedProgrammes = [];
@@ -102,13 +116,22 @@ class Enricher {
       for (let i = 0; i < total; i += batchSize) {
         const batch = programmes.slice(i, i + batchSize);
 
-        const batchPromises = batch.map(prog => {
+        const batchPromises = batch.map(async (prog) => {
           // Descobre o nome do canal deste programa
           const channelId = prog.$ ? prog.$.channel : null;
           const channelName = channelMap[channelId] || channelId || 'Desconhecido';
 
           // Passa o channelName como 3º argumento
-          return this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
+          const enriched = await this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
+          
+          // Atualizar estatísticas (verificar se foi enriquecido)
+          if (enriched.icon && enriched.icon[0] && enriched.icon[0].$.src !== this.config.output.placeholderImage) {
+            statsService.incrementEnriched();
+          } else {
+            statsService.incrementFailed();
+          }
+
+          return enriched;
         });
 
         const batchResults = await Promise.all(batchPromises);
@@ -117,6 +140,7 @@ class Enricher {
         if ((i + batchSize) % 50 < batchSize) {
           const percent = Math.round(((i + batch.length) / total) * 100);
           logger.info(`Progresso: ${percent}% (${i + batch.length}/${total})`);
+          if (apiServer) apiServer.emitLog('info', `Progresso: ${percent}%`);
         }
       }
 
@@ -125,14 +149,36 @@ class Enricher {
       const builder = new (require('xml2js').Builder)();
       const newXml = builder.buildObject(result);
 
-      // 5. Salvar
+      // 5. Salvar (ou não, se for dry run)
       const fs = require('fs');
-      fs.writeFileSync(this.config.output.path, newXml);
-      logger.info(`Arquivo XML salvo em: ${this.config.output.path}`);
+      if (dryRun) {
+        logger.info('🧪 DRY RUN: XML não foi salvo (modo de teste)');
+        if (apiServer) apiServer.emitLog('info', '🧪 DRY RUN concluído - XML não salvo');
+      } else {
+        fs.writeFileSync(this.config.output.path, newXml);
+        logger.info(`Arquivo XML salvo em: ${this.config.output.path}`);
+        if (apiServer) apiServer.emitLog('info', `✅ XML salvo: ${this.config.output.path}`);
+      }
+
+      // Finalizar estatísticas
+      statsService.end();
+      const finalStats = statsService.save();
+
+      // Enviar notificação
+      if (!dryRun && finalStats) {
+        await notificationService.send(finalStats);
+      }
+
+      // Atualizar estado da API
+      if (apiServer && finalStats) {
+        apiServer.updateState({ lastStats: finalStats });
+      }
 
     } catch (error) {
       logger.error(`Erro durante execução: ${error.message}`);
       if (error.stack) logger.debug(error.stack);
+      statsService.addError(error);
+      if (apiServer) apiServer.emitLog('error', `Erro: ${error.message}`);
     } finally {
       logger.info('Encerrando conexões...');
       if (this.matchingService && this.matchingService.apis) {
