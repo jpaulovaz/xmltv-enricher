@@ -55,11 +55,13 @@ O enricher consulta múltiplas APIs com fallback inteligente:
 | Feature | Descrição |
 |---------|-----------|
 | 🖥️ **Dashboard Web** | Interface visual moderna com controles em tempo real |
+| ⚙️ **Configurações Web** | Edite todas as configurações via interface (sem editar .env) |
 | 🔌 **REST API** | Controle remoto completo via HTTP |
 | 📨 **Notificações** | Webhooks para Discord, Slack ou genérico |
 | 💾 **Backup Automático** | Salva versões anteriores do XML |
 | 🧪 **Modo Dry-Run** | Teste sem salvar arquivo final |
 | 📊 **Estatísticas** | Métricas detalhadas de cada execução |
+| 📝 **Logs Detalhados** | Visualização completa de todos os logs em tempo real |
 | 🐳 **Docker** | Containerização completa |
 | ⏸️ **Pause/Resume** | Controle do agendamento |
 
