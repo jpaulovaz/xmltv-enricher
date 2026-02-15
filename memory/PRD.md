@@ -41,11 +41,22 @@ Análise completa do aplicativo GitHub `xmltv-enricher` para identificar oportun
 - **README.md**: Atualizado com documentação das novas funcionalidades
 - **data-testid**: Adicionados aos elementos HTML para melhor testabilidade
 
-### Session 3 - Correções
-- **Seção Plex adicionada**: Campos para URL, Token, PlexDB habilitado e caminho do banco
-- **Aviso de reinício melhorado**: Mensagem clara sobre `docker-compose restart`
-- **Alerta ao salvar**: Popup com instruções de reinício do Docker
-- **Bug fix logger.js**: Fallback para LOG_FILE quando não definido
+### Session 3 - Melhorias Completas
+- **Bug fix salvamento**: Corrigido problema de configurações não sendo aplicadas - agora atualiza process.env em tempo real
+- **Seção Plex completa**: Campos para URL, Token, PlexDB habilitado e caminho do banco
+- **RUN_ON_START = false**: Padrão alterado para não executar automaticamente na inicialização
+- **Botões de Teste de Conexão**:
+  - Testar Tvheadend (verifica conexão e retorna versão)
+  - Testar Plex (verifica conexão e retorna nome do servidor)
+  - Testar TMDb API Key
+  - Testar OMDb API Key
+- **Validação de campos**: URLs, porta, intervalo, concorrência, threshold
+- **Novo alerta informativo**: Mensagem clara sobre aplicação automática das configurações
+- **Novos endpoints**:
+  - POST /api/test/tvheadend
+  - POST /api/test/plex
+  - POST /api/test/tmdb
+  - POST /api/test/omdb
 
 ## Technical Architecture
 ```
