@@ -69,8 +69,8 @@ services:
       # Persistir backups
       - ./backups:/app/backups
       
-      # Persistir cache SQLite
-      - ./data:/app
+      # Persistir cache SQLite (apenas arquivos específicos, não todo /app)
+      - ./data:/app/data
       
       # Persistir logs
       - ./logs:/var/log
