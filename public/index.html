@@ -142,24 +142,50 @@
                         <h3>🔌 APIs de Metadados</h3>
                         <div class="form-group">
                             <label for="TMDB_API_KEY">TMDb API Key:</label>
-                            <input type="text" id="TMDB_API_KEY" name="TMDB_API_KEY">
+                            <input type="text" id="TMDB_API_KEY" name="TMDB_API_KEY" data-testid="input-tmdb-key">
                         </div>
                         <div class="form-group">
                             <label for="TVDB_API_KEY">TVDb API Key:</label>
-                            <input type="text" id="TVDB_API_KEY" name="TVDB_API_KEY">
+                            <input type="text" id="TVDB_API_KEY" name="TVDB_API_KEY" data-testid="input-tvdb-key">
                         </div>
                         <div class="form-group">
                             <label for="TVDB_PIN">TVDb PIN:</label>
-                            <input type="text" id="TVDB_PIN" name="TVDB_PIN">
+                            <input type="text" id="TVDB_PIN" name="TVDB_PIN" data-testid="input-tvdb-pin">
                         </div>
                         <div class="form-group">
                             <label for="OMDB_API_KEY">OMDb API Key:</label>
-                            <input type="text" id="OMDB_API_KEY" name="OMDB_API_KEY">
+                            <input type="text" id="OMDB_API_KEY" name="OMDB_API_KEY" data-testid="input-omdb-key">
                         </div>
                         <div class="form-group">
                             <label for="API_PRIORITY_ORDER">Ordem de Prioridade das APIs:</label>
-                            <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER" placeholder="plex,tvdb,tmdb,omdb">
+                            <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER" placeholder="plex,tvdb,tmdb,omdb" data-testid="input-api-priority">
                             <small>Separado por vírgulas</small>
+                        </div>
+                    </div>
+
+                    <!-- Plex -->
+                    <div class="config-section">
+                        <h3>🎬 Plex</h3>
+                        <div class="form-group">
+                            <label for="PLEX_URL">URL do Plex:</label>
+                            <input type="text" id="PLEX_URL" name="PLEX_URL" placeholder="http://localhost:32400" data-testid="input-plex-url">
+                        </div>
+                        <div class="form-group">
+                            <label for="PLEX_TOKEN">Token do Plex:</label>
+                            <input type="text" id="PLEX_TOKEN" name="PLEX_TOKEN" data-testid="input-plex-token">
+                            <small>Encontre seu token em: Plex → Configurações → Conta → XML</small>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="PLEX_DB_ENABLED" name="PLEX_DB_ENABLED" data-testid="checkbox-plex-db">
+                                Habilitar acesso direto ao banco do Plex (PlexDB)
+                            </label>
+                            <small>Permite buscar metadados diretamente do banco SQLite do Plex</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="PLEX_DB_PATH">Caminho do Banco PlexDB:</label>
+                            <input type="text" id="PLEX_DB_PATH" name="PLEX_DB_PATH" placeholder="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db" data-testid="input-plex-db-path">
+                            <small>Caminho completo para o arquivo .db do Plex</small>
                         </div>
                     </div>
 
