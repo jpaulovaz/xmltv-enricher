@@ -368,6 +368,73 @@
                 </form>
             </div>
         </div>
+
+        <!-- Tab Content: Tools -->
+        <div id="tools" class="tab-content">
+            <!-- Download Auditoria -->
+            <div class="card">
+                <h2>📥 Arquivo de Auditoria</h2>
+                <p>Baixe o arquivo CSV com o resultado detalhado da última execução para análise.</p>
+                <div class="tools-actions">
+                    <button id="btnDownloadAudit" class="btn btn-primary" data-testid="btn-download-audit">
+                        📥 Baixar Auditoria (CSV)
+                    </button>
+                    <span id="auditStatus" class="tool-status"></span>
+                </div>
+                <div class="audit-preview" id="auditPreview">
+                    <h4>📋 Prévia (últimas 20 linhas):</h4>
+                    <div class="audit-table-container">
+                        <table id="auditTable" class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Canal</th>
+                                    <th>Título Original</th>
+                                    <th>Busca</th>
+                                    <th>Status</th>
+                                    <th>Confiança</th>
+                                    <th>Resultado</th>
+                                    <th>Fonte</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditTableBody">
+                                <tr><td colspan="7">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gerenciamento do Dicionário -->
+            <div class="card">
+                <h2>📖 Dicionário de Limpeza</h2>
+                <p>Gerencie os prefixos que são removidos dos títulos antes da busca nas APIs.</p>
+                <div class="alert-info">
+                    <strong>💡 Dica:</strong> Adicione prefixos como "FILME:", "SÉRIE:", "ESTREIA:" etc. 
+                    O sistema removerá esses prefixos automaticamente ao buscar metadados.
+                </div>
+                
+                <div class="dictionary-add">
+                    <div class="form-group">
+                        <label for="newTerm">Adicionar novo termo:</label>
+                        <div class="input-with-button">
+                            <input type="text" id="newTerm" placeholder="Ex: ESPECIAL" data-testid="input-new-term">
+                            <button id="btnAddTerm" class="btn btn-primary" data-testid="btn-add-term">➕ Adicionar</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dictionary-stats">
+                    <span>Total de termos: <strong id="dictTermCount">0</strong></span>
+                </div>
+                
+                <div class="dictionary-list">
+                    <h4>📋 Termos cadastrados:</h4>
+                    <div id="dictionaryTerms" class="terms-container" data-testid="dictionary-terms">
+                        <p>Carregando...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <footer>
