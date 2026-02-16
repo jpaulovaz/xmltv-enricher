@@ -40,15 +40,15 @@ const btnResetConfig = document.getElementById('btnResetConfig');
 tabButtons.forEach(button => {
     button.addEventListener('click', () => {
         const tabName = button.getAttribute('data-tab');
-        
+
         // Remove active class from all tabs
         tabButtons.forEach(btn => btn.classList.remove('active'));
         tabContents.forEach(content => content.classList.remove('active'));
-        
+
         // Add active class to clicked tab
         button.classList.add('active');
         document.getElementById(tabName).classList.add('active');
-        
+
         // Load config when opening settings tab
         if (tabName === 'settings') {
             loadConfig();
@@ -163,7 +163,7 @@ async function loadConfig() {
     try {
         const response = await fetch('/api/config');
         const config = await response.json();
-        
+
         // Preencher formulário
         Object.keys(config).forEach(key => {
             const element = document.getElementById(key);
@@ -182,10 +182,10 @@ async function loadConfig() {
 
 configForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const formData = new FormData(configForm);
     const config = {};
-    
+
     // Coletar todos os valores do formulário
     for (const [key, value] of formData.entries()) {
         const element = document.getElementById(key);
@@ -195,7 +195,7 @@ configForm.addEventListener('submit', async (e) => {
             config[key] = value;
         }
     }
-    
+
     // Adicionar checkboxes desmarcados (não aparecem no FormData)
     const checkboxes = configForm.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(cb => {
@@ -203,16 +203,16 @@ configForm.addEventListener('submit', async (e) => {
             config[cb.id] = 'false';
         }
     });
-    
+
     try {
         const response = await fetch('/api/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('✅ Configurações salvas com sucesso!\n\nAs mudanças foram aplicadas automaticamente.');
             addLog('info', 'Configurações salvas e aplicadas com sucesso');
@@ -252,15 +252,15 @@ btnTestTvheadend.addEventListener('click', async () => {
     const url = document.getElementById('TVHEADEND_URL').value;
     const username = document.getElementById('TVHEADEND_USERNAME').value;
     const password = document.getElementById('TVHEADEND_PASSWORD').value;
-    
+
     if (!url) {
         showTestResult('tvheadendTestResult', false, '❌ URL não informada');
         return;
     }
-    
+
     showTestLoading('tvheadendTestResult');
     btnTestTvheadend.disabled = true;
-    
+
     try {
         const response = await fetch('/api/test/tvheadend', {
             method: 'POST',
@@ -268,7 +268,7 @@ btnTestTvheadend.addEventListener('click', async () => {
             body: JSON.stringify({ url, username, password })
         });
         const result = await response.json();
-        showTestResult('tvheadendTestResult', result.success, 
+        showTestResult('tvheadendTestResult', result.success,
             result.success ? `✅ ${result.message} (v${result.version})` : `❌ ${result.message}`);
     } catch (error) {
         showTestResult('tvheadendTestResult', false, '❌ Erro ao testar conexão');
@@ -281,15 +281,15 @@ btnTestTvheadend.addEventListener('click', async () => {
 btnTestPlex.addEventListener('click', async () => {
     const url = document.getElementById('PLEX_URL').value;
     const token = document.getElementById('PLEX_TOKEN').value;
-    
+
     if (!url || !token) {
         showTestResult('plexTestResult', false, '❌ URL e Token são obrigatórios');
         return;
     }
-    
+
     showTestLoading('plexTestResult');
     btnTestPlex.disabled = true;
-    
+
     try {
         const response = await fetch('/api/test/plex', {
             method: 'POST',
@@ -297,7 +297,7 @@ btnTestPlex.addEventListener('click', async () => {
             body: JSON.stringify({ url, token })
         });
         const result = await response.json();
-        showTestResult('plexTestResult', result.success, 
+        showTestResult('plexTestResult', result.success,
             result.success ? `✅ ${result.message} (${result.serverName})` : `❌ ${result.message}`);
     } catch (error) {
         showTestResult('plexTestResult', false, '❌ Erro ao testar conexão');
@@ -309,15 +309,15 @@ btnTestPlex.addEventListener('click', async () => {
 // Test TMDb
 btnTestTmdb.addEventListener('click', async () => {
     const apiKey = document.getElementById('TMDB_API_KEY').value;
-    
+
     if (!apiKey) {
         showTestResult('tmdbTestResult', false, '❌ API Key não informada');
         return;
     }
-    
+
     showTestLoading('tmdbTestResult');
     btnTestTmdb.disabled = true;
-    
+
     try {
         const response = await fetch('/api/test/tmdb', {
             method: 'POST',
@@ -325,7 +325,7 @@ btnTestTmdb.addEventListener('click', async () => {
             body: JSON.stringify({ apiKey })
         });
         const result = await response.json();
-        showTestResult('tmdbTestResult', result.success, 
+        showTestResult('tmdbTestResult', result.success,
             result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
     } catch (error) {
         showTestResult('tmdbTestResult', false, '❌ Erro ao testar API');
@@ -337,15 +337,15 @@ btnTestTmdb.addEventListener('click', async () => {
 // Test OMDb
 btnTestOmdb.addEventListener('click', async () => {
     const apiKey = document.getElementById('OMDB_API_KEY').value;
-    
+
     if (!apiKey) {
         showTestResult('omdbTestResult', false, '❌ API Key não informada');
         return;
     }
-    
+
     showTestLoading('omdbTestResult');
     btnTestOmdb.disabled = true;
-    
+
     try {
         const response = await fetch('/api/test/omdb', {
             method: 'POST',
@@ -353,7 +353,7 @@ btnTestOmdb.addEventListener('click', async () => {
             body: JSON.stringify({ apiKey })
         });
         const result = await response.json();
-        showTestResult('omdbTestResult', result.success, 
+        showTestResult('omdbTestResult', result.success,
             result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
     } catch (error) {
         showTestResult('omdbTestResult', false, '❌ Erro ao testar API');
@@ -393,14 +393,14 @@ function updateState(state) {
 
 function updateStatusBadge(status) {
     statusBadge.className = 'status-badge status-' + status;
-    
+
     const statusTexts = {
         running: '🔄 Executando',
         paused: '⏸️ Pausado',
         idle: '✅ Ocioso',
         disconnected: '❌ Desconectado'
     };
-    
+
     statusText.textContent = statusTexts[status] || 'Desconhecido';
 }
 
@@ -412,37 +412,37 @@ function addLog(level, message, timestamp) {
     if (logLevelFilter !== 'all' && level !== logLevelFilter) {
         return;
     }
-    
+
     // Filtrar logs de debug se desabilitado
     if (!showDebugLogs && level === 'debug') {
         return;
     }
-    
+
     const logEntry = document.createElement('div');
     logEntry.className = 'log-entry log-' + level;
-    
+
     const time = timestamp ? new Date(timestamp).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR');
-    
+
     const levelIcons = {
         info: 'ℹ️',
         warn: '⚠️',
         error: '❌',
         debug: '🐛'
     };
-    
+
     logEntry.innerHTML = `
         <span class="log-time">[${time}]</span>
         <span class="log-level">${levelIcons[level] || '📝'}</span>
         <span class="log-message">${escapeHtml(message)}</span>
     `;
-    
+
     logsContainer.appendChild(logEntry);
-    
+
     // Auto-scroll
     if (autoScroll) {
         logsContainer.scrollTop = logsContainer.scrollHeight;
     }
-    
+
     // Limit logs to 1000 entries
     while (logsContainer.children.length > 1000) {
         logsContainer.removeChild(logsContainer.firstChild);
@@ -462,14 +462,14 @@ function updateStats(stats) {
     if (!stats || stats.message) {
         return;
     }
-    
+
     document.getElementById('totalPrograms').textContent = stats.totalPrograms || '-';
     document.getElementById('enrichedPrograms').textContent = stats.enrichedPrograms || '-';
     document.getElementById('successRate').textContent = stats.successRate ? `${stats.successRate}%` : '-';
     document.getElementById('duration').textContent = stats.duration || '-';
     document.getElementById('cacheHits').textContent = stats.cacheHits || '-';
     document.getElementById('cacheHitRate').textContent = stats.cacheHitRate ? `${stats.cacheHitRate}%` : '-';
-    
+
     // API calls
     if (stats.apiCalls) {
         document.getElementById('tmdbCalls').textContent = stats.apiCalls.tmdb || 0;
@@ -490,7 +490,7 @@ async function loadInitialData() {
         const statusResponse = await fetch('/api/status');
         const statusData = await statusResponse.json();
         updateState(statusData);
-        
+
         // Load stats
         const statsResponse = await fetch('/api/stats');
         const statsData = await statsResponse.json();
@@ -520,7 +520,7 @@ document.getElementById('btnDownloadAudit')?.addEventListener('click', () => {
     const statusEl = document.getElementById('auditStatus');
     statusEl.textContent = '⏳ Baixando...';
     statusEl.style.color = '#666';
-    
+
     // Criar link de download
     const link = document.createElement('a');
     link.href = '/api/audit/download';
@@ -528,12 +528,12 @@ document.getElementById('btnDownloadAudit')?.addEventListener('click', () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     setTimeout(() => {
         statusEl.textContent = '✅ Download iniciado!';
         statusEl.style.color = '#27ae60';
     }, 500);
-    
+
     setTimeout(() => {
         statusEl.textContent = '';
     }, 3000);
@@ -542,35 +542,36 @@ document.getElementById('btnDownloadAudit')?.addEventListener('click', () => {
 // Load Audit Preview
 async function loadAuditPreview() {
     try {
-        const response = await fetch('/api/audit');
+        // Pega o filtro selecionado no Select (OK, NADA ou REJEITADO)
+        const filter = document.getElementById('auditFilter')?.value || '';
+
+        // Faz a chamada para a API passando o filtro
+        const response = await fetch(`/api/audit?status=${encodeURIComponent(filter)}`);
         const data = await response.json();
-        
+
         const tbody = document.getElementById('auditTableBody');
         if (!tbody) return;
-        
+
+        // Se não houver dados (considerando que o array vem com o header)
         if (!data.audit || data.audit.length <= 1) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Nenhum dado de auditoria disponível</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Nenhum dado encontrado para este filtro</td></tr>';
             return;
         }
-        
-        // Pegar últimas 20 linhas (excluindo header)
-        const lines = data.audit.slice(-21).filter(line => line.trim() && !line.includes('Título Original'));
-        
-        if (lines.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Nenhum dado de auditoria disponível</td></tr>';
-            return;
-        }
-        
+
+        // Removemos a primeira linha (header) para processar apenas os dados
+        const lines = data.audit.slice(1).filter(line => line.trim());
+
         tbody.innerHTML = lines.map(line => {
-            // Parse CSV line (considerando aspas)
+            // Parse CSV line (considerando aspas e delimitador ;)
             const parts = line.match(/(".*?"|[^";]+)(?=;|$)/g) || [];
             const cells = parts.map(p => p.replace(/^"|"$/g, '').trim());
-            
+
             if (cells.length < 7) return '';
-            
-            const statusClass = cells[3]?.includes('OK') ? 'color:#27ae60' : 
-                               cells[3]?.includes('REJEITADO') ? 'color:#f39c12' : 'color:#e74c3c';
-            
+
+            // Define a cor baseada no status encontrado na coluna 3
+            const statusClass = cells[3]?.includes('OK') ? 'color:#27ae60' :
+                cells[3]?.includes('REJEITADO') ? 'color:#f39c12' : 'color:#e74c3c';
+
             return `<tr>
                 <td>${cells[0] || '-'}</td>
                 <td title="${cells[1]}">${(cells[1] || '-').substring(0, 30)}${cells[1]?.length > 30 ? '...' : ''}</td>
@@ -581,7 +582,7 @@ async function loadAuditPreview() {
                 <td>${cells[6] || '-'}</td>
             </tr>`;
         }).join('');
-        
+
     } catch (error) {
         console.error('Erro ao carregar prévia da auditoria:', error);
     }
@@ -592,24 +593,24 @@ async function loadDictionary() {
     try {
         const response = await fetch('/api/dictionary');
         const data = await response.json();
-        
+
         document.getElementById('dictTermCount').textContent = data.totalTerms || 0;
-        
+
         const container = document.getElementById('dictionaryTerms');
         if (!container) return;
-        
+
         if (!data.terms || data.terms.length === 0) {
             container.innerHTML = '<p class="no-terms">Nenhum termo cadastrado</p>';
             return;
         }
-        
+
         container.innerHTML = data.terms.map(term => `
             <div class="term-tag" data-term="${encodeURIComponent(term)}">
                 <span class="term-text">${term}</span>
                 <button class="term-delete" onclick="deleteTerm('${encodeURIComponent(term)}')" title="Remover">✕</button>
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('Erro ao carregar dicionário:', error);
     }
@@ -619,21 +620,21 @@ async function loadDictionary() {
 document.getElementById('btnAddTerm')?.addEventListener('click', async () => {
     const input = document.getElementById('newTerm');
     const term = input.value.trim();
-    
+
     if (!term) {
         alert('Digite um termo para adicionar');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/dictionary/add', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ term })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             input.value = '';
             loadDictionary();
@@ -657,18 +658,18 @@ document.getElementById('newTerm')?.addEventListener('keypress', (e) => {
 // Delete Term
 async function deleteTerm(encodedTerm) {
     const term = decodeURIComponent(encodedTerm);
-    
+
     if (!confirm(`Remover o termo "${term}" do dicionário?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/dictionary/${encodedTerm}`, {
             method: 'DELETE'
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             loadDictionary();
         } else {
