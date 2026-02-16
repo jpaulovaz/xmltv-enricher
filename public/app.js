@@ -511,5 +511,180 @@ setInterval(async () => {
     }
 }, 5000);
 
+// ============================================
+// TOOLS TAB - AUDITORIA & DICIONÁRIO
+// ============================================
+
+// Download Audit File
+document.getElementById('btnDownloadAudit')?.addEventListener('click', () => {
+    const statusEl = document.getElementById('auditStatus');
+    statusEl.textContent = '⏳ Baixando...';
+    statusEl.style.color = '#666';
+    
+    // Criar link de download
+    const link = document.createElement('a');
+    link.href = '/api/audit/download';
+    link.download = 'auditoria.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => {
+        statusEl.textContent = '✅ Download iniciado!';
+        statusEl.style.color = '#27ae60';
+    }, 500);
+    
+    setTimeout(() => {
+        statusEl.textContent = '';
+    }, 3000);
+});
+
+// Load Audit Preview
+async function loadAuditPreview() {
+    try {
+        const response = await fetch('/api/audit');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('auditTableBody');
+        if (!tbody) return;
+        
+        if (!data.audit || data.audit.length <= 1) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Nenhum dado de auditoria disponível</td></tr>';
+            return;
+        }
+        
+        // Pegar últimas 20 linhas (excluindo header)
+        const lines = data.audit.slice(-21).filter(line => line.trim() && !line.includes('Título Original'));
+        
+        if (lines.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Nenhum dado de auditoria disponível</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = lines.map(line => {
+            // Parse CSV line (considerando aspas)
+            const parts = line.match(/(".*?"|[^";]+)(?=;|$)/g) || [];
+            const cells = parts.map(p => p.replace(/^"|"$/g, '').trim());
+            
+            if (cells.length < 7) return '';
+            
+            const statusClass = cells[3]?.includes('OK') ? 'color:#27ae60' : 
+                               cells[3]?.includes('REJEITADO') ? 'color:#f39c12' : 'color:#e74c3c';
+            
+            return `<tr>
+                <td>${cells[0] || '-'}</td>
+                <td title="${cells[1]}">${(cells[1] || '-').substring(0, 30)}${cells[1]?.length > 30 ? '...' : ''}</td>
+                <td>${cells[2] || '-'}</td>
+                <td style="${statusClass};font-weight:bold">${cells[3] || '-'}</td>
+                <td>${cells[4] || '-'}</td>
+                <td>${cells[5] || '-'}</td>
+                <td>${cells[6] || '-'}</td>
+            </tr>`;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Erro ao carregar prévia da auditoria:', error);
+    }
+}
+
+// Load Dictionary
+async function loadDictionary() {
+    try {
+        const response = await fetch('/api/dictionary');
+        const data = await response.json();
+        
+        document.getElementById('dictTermCount').textContent = data.totalTerms || 0;
+        
+        const container = document.getElementById('dictionaryTerms');
+        if (!container) return;
+        
+        if (!data.terms || data.terms.length === 0) {
+            container.innerHTML = '<p class="no-terms">Nenhum termo cadastrado</p>';
+            return;
+        }
+        
+        container.innerHTML = data.terms.map(term => `
+            <div class="term-tag" data-term="${encodeURIComponent(term)}">
+                <span class="term-text">${term}</span>
+                <button class="term-delete" onclick="deleteTerm('${encodeURIComponent(term)}')" title="Remover">✕</button>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Erro ao carregar dicionário:', error);
+    }
+}
+
+// Add Term
+document.getElementById('btnAddTerm')?.addEventListener('click', async () => {
+    const input = document.getElementById('newTerm');
+    const term = input.value.trim();
+    
+    if (!term) {
+        alert('Digite um termo para adicionar');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/dictionary/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ term })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            input.value = '';
+            loadDictionary();
+        } else {
+            alert(data.error || 'Erro ao adicionar termo');
+        }
+    } catch (error) {
+        console.error('Erro ao adicionar termo:', error);
+        alert('Erro ao adicionar termo');
+    }
+});
+
+// Enter key to add term
+document.getElementById('newTerm')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btnAddTerm').click();
+    }
+});
+
+// Delete Term
+async function deleteTerm(encodedTerm) {
+    const term = decodeURIComponent(encodedTerm);
+    
+    if (!confirm(`Remover o termo "${term}" do dicionário?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/dictionary/${encodedTerm}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadDictionary();
+        } else {
+            alert(data.error || 'Erro ao remover termo');
+        }
+    } catch (error) {
+        console.error('Erro ao remover termo:', error);
+        alert('Erro ao remover termo');
+    }
+}
+
+// Load tools data when tab is clicked
+document.querySelector('[data-tab="tools"]')?.addEventListener('click', () => {
+    loadAuditPreview();
+    loadDictionary();
+});
+
 // Initialize
 loadInitialData();
