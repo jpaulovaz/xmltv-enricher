@@ -26,14 +26,11 @@ services:
       # Persistir backups
       - ./backups:/app/backups
       
-      # Persistir cache SQLite
+      # Persistir cache SQLite e arquivo de auditoria
       - ./data:/app/data
       
       # Persistir logs (mapeado para /app/logs dentro do container)
       - ./logs:/app/logs
-      
-      # Persistir arquivo de auditoria (diretório de relatórios)
-      - ./reports:/app/reports
       
       # Se usar PlexDB, montar o banco (descomente e ajuste o caminho)
       # - /path/to/plex/database:/plexdb:ro
