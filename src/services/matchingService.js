@@ -36,10 +36,11 @@ class MatchingService {
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
 
-    // NOVO: Memória para não repetir avisos de canais sem placeholder
-    this.loggedMissingChannels = new Set();
+    this.auditFilePath = path.join(dataDir, 'auditoria_enricher.csv');
+    // Sempre recriar o arquivo de auditoria no início de cada execução
+    fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
+    logger.info(`Arquivo de auditoria criado: ${this.auditFilePath}`);
   }
 
   // Helper para decidir qual imagem usar baseada no canal
@@ -49,23 +50,12 @@ class MatchingService {
     // 1. Verifica se o canal tem um estilo definido
     const style = placeholdersConfig.channels[channelName];
 
-    // CASO DE ALERTA: Canal não existe no JSON
-    if (!style) {
-      // Só avisa se ainda não avisou nesta execução
-      if (!this.loggedMissingChannels.has(channelName)) {
-        logger.warn(`⚠️ Canal sem estilo definido em placeholders.json: "${channelName}". Usando Genérico.`);
-        this.loggedMissingChannels.add(channelName);
-      }
-      // Tenta usar o estilo genérico do JSON, se não, usa o do .env
-      return placeholdersConfig.styles.generic || defaultPlaceholder;
-    }
-
     // 2. Se tiver estilo e o estilo tiver uma URL, retorna ela
-    if (placeholdersConfig.styles[style]) {
+    if (style && placeholdersConfig.styles[style]) {
       return placeholdersConfig.styles[style];
     }
 
-    // 3. Se o estilo existe mas não tem URL (erro no JSON)
+    // 3. Se não, tenta usar o estilo 'generic' do JSON
     if (placeholdersConfig.styles.generic) {
       return placeholdersConfig.styles.generic;
     }
@@ -201,7 +191,7 @@ class MatchingService {
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
 
     const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${safeResult}";${source}\n`;
-    
+
     // Escrever diretamente no arquivo para garantir persistência
     try {
       fs.appendFileSync(this.auditFilePath, line, 'utf-8');
@@ -209,7 +199,7 @@ class MatchingService {
       logger.error(`Erro ao escrever auditoria: ${e.message}`);
     }
   }
-  
+
   // Método para fechar recursos (mantido para compatibilidade)
   closeAuditStream() {
     // Não há mais stream para fechar, usando appendFileSync
