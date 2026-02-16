@@ -32,6 +32,9 @@ services:
       # Persistir logs (mapeado para /app/logs dentro do container)
       - ./logs:/app/logs
       
+      # Persistir dicionário de limpeza
+      - ./cleaner_dictionary.txt:/app/cleaner_dictionary.txt
+      
       # Se usar PlexDB, montar o banco (descomente e ajuste o caminho)
       # - /path/to/plex/database:/plexdb:ro
     
