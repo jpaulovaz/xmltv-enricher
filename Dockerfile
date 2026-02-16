@@ -24,7 +24,7 @@ RUN echo "=== Verificando arquivos ===" && \
     test -f /app/src/index.js && echo "✓ index.js existe!" || echo "✗ index.js NÃO existe!"
 
 # Criar diretórios
-RUN mkdir -p /app/output /app/backups /app/logs /app/data /app/reports
+RUN mkdir -p /app/output /app/backups /app/logs /app/data
 
 EXPOSE 3000
 
