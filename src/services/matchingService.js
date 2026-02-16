@@ -36,7 +36,7 @@ class MatchingService {
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    
+
     this.auditFilePath = path.join(dataDir, 'auditoria_enricher.csv');
     // Sempre recriar o arquivo de auditoria no início de cada execução
     fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
@@ -191,7 +191,7 @@ class MatchingService {
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
 
     const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${safeResult}";${source}\n`;
-    
+
     // Escrever diretamente no arquivo para garantir persistência
     try {
       fs.appendFileSync(this.auditFilePath, line, 'utf-8');
@@ -199,7 +199,7 @@ class MatchingService {
       logger.error(`Erro ao escrever auditoria: ${e.message}`);
     }
   }
-  
+
   // Método para fechar recursos (mantido para compatibilidade)
   closeAuditStream() {
     // Não há mais stream para fechar, usando appendFileSync
