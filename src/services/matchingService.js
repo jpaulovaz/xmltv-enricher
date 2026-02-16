@@ -35,6 +35,9 @@ class MatchingService {
       fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     }
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
+
+    // NOVO: Memória para não repetir avisos de canais sem placeholder
+    this.loggedMissingChannels = new Set();
   }
 
   // Helper para decidir qual imagem usar baseada no canal
@@ -44,12 +47,23 @@ class MatchingService {
     // 1. Verifica se o canal tem um estilo definido
     const style = placeholdersConfig.channels[channelName];
 
+    // CASO DE ALERTA: Canal não existe no JSON
+    if (!style) {
+      // Só avisa se ainda não avisou nesta execução
+      if (!this.loggedMissingChannels.has(channelName)) {
+        logger.warn(`⚠️ Canal sem estilo definido em placeholders.json: "${channelName}". Usando Genérico.`);
+        this.loggedMissingChannels.add(channelName);
+      }
+      // Tenta usar o estilo genérico do JSON, se não, usa o do .env
+      return placeholdersConfig.styles.generic || defaultPlaceholder;
+    }
+
     // 2. Se tiver estilo e o estilo tiver uma URL, retorna ela
-    if (style && placeholdersConfig.styles[style]) {
+    if (placeholdersConfig.styles[style]) {
       return placeholdersConfig.styles[style];
     }
 
-    // 3. Se não, tenta usar o estilo 'generic' do JSON
+    // 3. Se o estilo existe mas não tem URL (erro no JSON)
     if (placeholdersConfig.styles.generic) {
       return placeholdersConfig.styles.generic;
     }
