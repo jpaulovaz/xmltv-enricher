@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const config = require('../config');
 const {
   extractCleanTitle,
   cleanSeriesInfo,
@@ -21,18 +22,19 @@ try {
 class MatchingService {
   constructor(...args) {
     this.cacheService = args[args.length - 1];
-    const config = args[args.length - 2];
+    const configArg = args[args.length - 2];
     this.apis = args.slice(0, -2).filter(api => api !== null);
 
     this.fuzzyMatcher = new FuzzyMatcher(
-      config.matching.algorithm,
-      config.matching.confidenceThreshold
+      configArg.matching.algorithm,
+      configArg.matching.confidenceThreshold
     );
-    this.threshold = config.matching.confidenceThreshold;
+    this.threshold = configArg.matching.confidenceThreshold;
 
-    this.auditFilePath = path.join(process.cwd(), 'auditoria_enricher.csv');
-    if (!fs.existsSync(this.auditFilePath)) {
-      fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
+    // Usar o diretório data que já é mapeado no Docker
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
     }
     this.auditStream = fs.createWriteStream(this.auditFilePath, { flags: 'a', encoding: 'utf-8' });
 
@@ -103,7 +105,11 @@ class MatchingService {
             logger.info(`✓ Encontrado em cache: "${title}"`);
             this._writeToAudit(channelName, originalTitle, title, 100, cached.title, 'Cache');
             // Passa o activePlaceholder para usar se o cache não tiver imagem
-            return this._applyEnrichment(programme, cached, activePlaceholder);
+            const enrichedProg = this._applyEnrichment(programme, cached, activePlaceholder);
+            // Marcar como cache hit e enriquecido
+            enrichedProg._enrichmentSource = 'cache';
+            enrichedProg._wasEnriched = true;
+            return enrichedProg;
           } else {
             titlesToSkipApi.add(title);
           }
@@ -154,7 +160,11 @@ class MatchingService {
       logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
       this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource);
-      return this._applyEnrichment(programme, bestEnriched, activePlaceholder);
+      const enrichedProg = this._applyEnrichment(programme, bestEnriched, activePlaceholder);
+      // Marcar como enriquecido via API
+      enrichedProg._enrichmentSource = finalSource;
+      enrichedProg._wasEnriched = true;
+      return enrichedProg;
     }
 
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
@@ -171,7 +181,11 @@ class MatchingService {
     }
 
     // Retorna o Placeholder Dinâmico
-    return this._applySmartPlaceholder(programme, activePlaceholder);
+    const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
+    // Marcar como NÃO enriquecido (usou placeholder)
+    placeholderProg._enrichmentSource = 'placeholder';
+    placeholderProg._wasEnriched = false;
+    return placeholderProg;
   }
 
   _writeToAudit(channel, original, search, confidence, resultTitle, source) {
@@ -187,16 +201,28 @@ class MatchingService {
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
 
     const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${safeResult}";${source}\n`;
-    this.auditStream.write(line);
+    
+    // Escrever diretamente no arquivo para garantir persistência
+    try {
+      fs.appendFileSync(this.auditFilePath, line, 'utf-8');
+    } catch (e) {
+      logger.error(`Erro ao escrever auditoria: ${e.message}`);
+    }
+  }
+  
+  // Método para fechar recursos (mantido para compatibilidade)
+  closeAuditStream() {
+    // Não há mais stream para fechar, usando appendFileSync
   }
 
   saveAuditCSV() { }
 
   _applyEnrichment(programme, data, placeholder) {
     const prog = { ...programme };
+    const lang = config.api.language || 'pt-BR';
     // Usa a imagem da API ou o placeholder dinâmico
     prog.icon = [{ $: { src: data.image || placeholder } }];
-    if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: 'pt-BR' } }));
+    if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: lang } }));
     if (data.year) prog.date = [data.year.toString()];
     if (data.rating) prog.rating = [{ value: [data.rating], $: { system: 'BR' } }];
 

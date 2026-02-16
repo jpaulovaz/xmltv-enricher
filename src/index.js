@@ -2,6 +2,9 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const scheduler = require('./scheduler');
 const Enricher = require('./enricher');
+const APIServer = require('./api/server');
+
+let apiServer = null;
 
 async function initialize() {
   logger.info('Iniciando XMLTV Enricher...');
@@ -35,16 +38,25 @@ async function initialize() {
     logger.info(`Nível de Concorrência: ${config.processing.concurrency || 1} threads`);
   }
 
+  // Iniciar API Server (Dashboard e REST API)
+  const enricher = new Enricher(config);
+  apiServer = new APIServer(config, enricher, scheduler);
+  await apiServer.start();
+
+  // Conectar logger ao WebSocket para emitir todos os logs
+  logger.connectWebSocket(apiServer);
+
   // Iniciar o scheduler
   scheduler.start();
 
-  // Executar imediatamente na inicialização
-  logger.info('Executando primeira rodada imediatamente...');
-  try {
-    const enricher = new Enricher(config);
-    await enricher.run();
-  } catch (err) {
-    logger.error(`Erro ao executar Enricher: ${err.message}`);
+  // Executar imediatamente na inicialização (opcional via env)
+  if (process.env.RUN_ON_START !== 'false') {
+    logger.info('Executando primeira rodada imediatamente...');
+    try {
+      await enricher.run(false, apiServer);
+    } catch (err) {
+      logger.error(`Erro ao executar Enricher: ${err.message}`);
+    }
   }
 }
 
