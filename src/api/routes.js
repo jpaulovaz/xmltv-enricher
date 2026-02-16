@@ -101,7 +101,7 @@ module.exports = (app, apiServer) => {
 
   // Get audit data
   app.get('/api/audit', (req, res) => {
-    const auditPath = path.join(process.cwd(), 'reports', 'auditoria_enricher.csv');
+    const auditPath = path.join(process.cwd(), 'data', 'auditoria_enricher.csv');
     
     if (fs.existsSync(auditPath)) {
       const content = fs.readFileSync(auditPath, 'utf-8');
