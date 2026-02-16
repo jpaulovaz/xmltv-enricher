@@ -126,6 +126,9 @@ const convertToXmltvNs = (season, episode) => {
   return `${s}.${e}.`;
 };
 
+// Função de sleep para rate limiting
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 module.exports = {
   normalizeTitle,
   generateCacheKey,
@@ -133,5 +136,6 @@ module.exports = {
   extractCleanTitle,
   cleanSeriesInfo,
   parseEpisodeInfo,
-  convertToXmltvNs
+  convertToXmltvNs,
+  sleep
 };
