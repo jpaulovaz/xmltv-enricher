@@ -1,66 +1,18 @@
+# Dependências
 node_modules/
-yarn.lock
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+npm-debug.log*
+
+# Dados gerados pelo app (Essencial ignorar estes)
+data/*.db
+data/*.csv
+*.csv
+logs/
+output/
+backups/
+
+# Configurações pessoais
+.env
+
+# Arquivos de sistema/IDE
+.DS_Store
+.vscode/
