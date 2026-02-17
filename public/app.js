@@ -544,9 +544,10 @@ async function loadAuditPreview() {
     try {
         // Pega o filtro selecionado no Select (OK, NADA ou REJEITADO)
         const filter = document.getElementById('auditFilter')?.value || '';
+        const limit = document.getElementById('auditLimit')?.value || '20'; // Pega o limite selecionado
 
-        // Faz a chamada para a API passando o filtro
-        const response = await fetch(`/api/audit?status=${encodeURIComponent(filter)}`);
+        // Adiciona o limit na URL
+        const response = await fetch(`/api/audit?status=${encodeURIComponent(filter)}&limit=${limit}`);
         const data = await response.json();
 
         const tbody = document.getElementById('auditTableBody');

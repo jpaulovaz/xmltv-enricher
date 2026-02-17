@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XMLTV Enricher - Dashboard</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -32,8 +34,10 @@
                 <div class="card">
                     <h2>🎮 Controles</h2>
                     <div class="controls">
-                        <button id="btnRunNow" class="btn btn-primary" data-testid="btn-run-now">▶️ Executar Agora</button>
-                        <button id="btnRunDryRun" class="btn btn-secondary" data-testid="btn-dry-run">🧪 Dry Run</button>
+                        <button id="btnRunNow" class="btn btn-primary" data-testid="btn-run-now">▶️ Executar
+                            Agora</button>
+                        <button id="btnRunDryRun" class="btn btn-secondary" data-testid="btn-dry-run">🧪 Dry
+                            Run</button>
                         <button id="btnPause" class="btn btn-warning" data-testid="btn-pause">⏸️ Pausar</button>
                         <button id="btnResume" class="btn btn-success" data-testid="btn-resume">▶️ Retomar</button>
                     </div>
@@ -76,7 +80,7 @@
             </div>
 
             <!-- APIs Utilizadas -->
-            <div class="card">
+            <div class="card" style="margin-top: 8px;">
                 <h2>🔌 APIs Utilizadas</h2>
                 <div id="apiCallsContainer" class="api-calls">
                     <span class="api-badge">TMDb: <strong id="tmdbCalls">0</strong></span>
@@ -120,27 +124,31 @@
             <div class="card">
                 <h2>⚙️ Configurações do Sistema</h2>
                 <div class="alert-info" data-testid="config-info">
-                    <strong>💡 Dica:</strong> As configurações são aplicadas automaticamente ao salvar. 
+                    <strong>💡 Dica:</strong> As configurações são aplicadas automaticamente ao salvar.
                     Use os botões <strong>"Testar"</strong> para validar suas conexões antes de salvar.
                 </div>
-                
+
                 <form id="configForm">
                     <!-- Tvheadend -->
                     <div class="config-section">
                         <h3>📡 Tvheadend</h3>
                         <div class="form-group">
                             <label for="TVHEADEND_URL">URL do Tvheadend:</label>
-                            <input type="text" id="TVHEADEND_URL" name="TVHEADEND_URL" placeholder="http://localhost:9981" data-testid="input-tvheadend-url">
+                            <input type="text" id="TVHEADEND_URL" name="TVHEADEND_URL"
+                                placeholder="http://localhost:9981" data-testid="input-tvheadend-url">
                         </div>
                         <div class="form-group">
                             <label for="TVHEADEND_USERNAME">Usuário:</label>
-                            <input type="text" id="TVHEADEND_USERNAME" name="TVHEADEND_USERNAME" data-testid="input-tvheadend-user">
+                            <input type="text" id="TVHEADEND_USERNAME" name="TVHEADEND_USERNAME"
+                                data-testid="input-tvheadend-user">
                         </div>
                         <div class="form-group">
                             <label for="TVHEADEND_PASSWORD">Senha:</label>
-                            <input type="password" id="TVHEADEND_PASSWORD" name="TVHEADEND_PASSWORD" data-testid="input-tvheadend-pass">
+                            <input type="password" id="TVHEADEND_PASSWORD" name="TVHEADEND_PASSWORD"
+                                data-testid="input-tvheadend-pass">
                         </div>
-                        <button type="button" class="btn btn-test" id="btnTestTvheadend" data-testid="btn-test-tvheadend">
+                        <button type="button" class="btn btn-test" id="btnTestTvheadend"
+                            data-testid="btn-test-tvheadend">
                             🔌 Testar Conexão Tvheadend
                         </button>
                         <span id="tvheadendTestResult" class="test-result"></span>
@@ -153,7 +161,8 @@
                             <label for="TMDB_API_KEY">TMDb API Key:</label>
                             <div class="input-with-button">
                                 <input type="text" id="TMDB_API_KEY" name="TMDB_API_KEY" data-testid="input-tmdb-key">
-                                <button type="button" class="btn btn-test-small" id="btnTestTmdb" data-testid="btn-test-tmdb">Testar</button>
+                                <button type="button" class="btn btn-test-small" id="btnTestTmdb"
+                                    data-testid="btn-test-tmdb">Testar</button>
                             </div>
                             <span id="tmdbTestResult" class="test-result"></span>
                         </div>
@@ -169,13 +178,15 @@
                             <label for="OMDB_API_KEY">OMDb API Key:</label>
                             <div class="input-with-button">
                                 <input type="text" id="OMDB_API_KEY" name="OMDB_API_KEY" data-testid="input-omdb-key">
-                                <button type="button" class="btn btn-test-small" id="btnTestOmdb" data-testid="btn-test-omdb">Testar</button>
+                                <button type="button" class="btn btn-test-small" id="btnTestOmdb"
+                                    data-testid="btn-test-omdb">Testar</button>
                             </div>
                             <span id="omdbTestResult" class="test-result"></span>
                         </div>
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="IMDB_ENABLED" name="IMDB_ENABLED" data-testid="checkbox-imdb-enabled">
+                                <input type="checkbox" id="IMDB_ENABLED" name="IMDB_ENABLED"
+                                    data-testid="checkbox-imdb-enabled">
                                 Habilitar IMDB (fallback)
                             </label>
                             <small>Usado apenas para títulos sem match nas outras APIs</small>
@@ -200,7 +211,8 @@
                         </div>
                         <div class="form-group">
                             <label for="API_PRIORITY_ORDER">Ordem de Prioridade das APIs:</label>
-                            <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER" placeholder="plex,tvdb,tmdb,omdb" data-testid="input-api-priority">
+                            <input type="text" id="API_PRIORITY_ORDER" name="API_PRIORITY_ORDER"
+                                placeholder="plex,tvdb,tmdb,omdb" data-testid="input-api-priority">
                             <small>Separado por vírgulas. Opções: plex, plexdb, tvdb, tmdb, omdb, imdb</small>
                         </div>
                     </div>
@@ -210,7 +222,8 @@
                         <h3>🎬 Plex</h3>
                         <div class="form-group">
                             <label for="PLEX_URL">URL do Plex:</label>
-                            <input type="text" id="PLEX_URL" name="PLEX_URL" placeholder="http://localhost:32400" data-testid="input-plex-url">
+                            <input type="text" id="PLEX_URL" name="PLEX_URL" placeholder="http://localhost:32400"
+                                data-testid="input-plex-url">
                         </div>
                         <div class="form-group">
                             <label for="PLEX_TOKEN">Token do Plex:</label>
@@ -223,14 +236,17 @@
                         <span id="plexTestResult" class="test-result"></span>
                         <div class="form-group" style="margin-top: 15px;">
                             <label>
-                                <input type="checkbox" id="PLEX_DB_ENABLED" name="PLEX_DB_ENABLED" data-testid="checkbox-plex-db">
+                                <input type="checkbox" id="PLEX_DB_ENABLED" name="PLEX_DB_ENABLED"
+                                    data-testid="checkbox-plex-db">
                                 Habilitar acesso direto ao banco do Plex (PlexDB)
                             </label>
                             <small>Permite buscar metadados diretamente do banco SQLite do Plex</small>
                         </div>
                         <div class="form-group">
                             <label for="PLEX_DB_PATH">Caminho do Banco PlexDB:</label>
-                            <input type="text" id="PLEX_DB_PATH" name="PLEX_DB_PATH" placeholder="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db" data-testid="input-plex-db-path">
+                            <input type="text" id="PLEX_DB_PATH" name="PLEX_DB_PATH"
+                                placeholder="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db"
+                                data-testid="input-plex-db-path">
                             <small>Caminho completo para o arquivo .db do Plex</small>
                         </div>
                     </div>
@@ -274,7 +290,8 @@
                         <h3>🎯 Matching de Títulos</h3>
                         <div class="form-group">
                             <label for="MATCHING_ALGORITHM">Algoritmo de Matching:</label>
-                            <select id="MATCHING_ALGORITHM" name="MATCHING_ALGORITHM" data-testid="select-matching-algorithm">
+                            <select id="MATCHING_ALGORITHM" name="MATCHING_ALGORITHM"
+                                data-testid="select-matching-algorithm">
                                 <option value="jaro_winkler">Jaro-Winkler (recomendado)</option>
                                 <option value="levenshtein">Levenshtein</option>
                                 <option value="dice">Dice Coefficient</option>
@@ -283,7 +300,8 @@
                         </div>
                         <div class="form-group">
                             <label for="CONFIDENCE_THRESHOLD">Limite de Confiança (%):</label>
-                            <input type="number" id="CONFIDENCE_THRESHOLD" name="CONFIDENCE_THRESHOLD" min="0" max="100" data-testid="input-confidence-threshold">
+                            <input type="number" id="CONFIDENCE_THRESHOLD" name="CONFIDENCE_THRESHOLD" min="0" max="100"
+                                data-testid="input-confidence-threshold">
                             <small>Percentual mínimo de similaridade para aceitar um match (0-100)</small>
                         </div>
                     </div>
@@ -293,12 +311,15 @@
                         <h3>📤 Saída</h3>
                         <div class="form-group">
                             <label for="OUTPUT_FILE_PATH">Caminho do Arquivo XML:</label>
-                            <input type="text" id="OUTPUT_FILE_PATH" name="OUTPUT_FILE_PATH" placeholder="./output/xmltv.xml" data-testid="input-output-path">
+                            <input type="text" id="OUTPUT_FILE_PATH" name="OUTPUT_FILE_PATH"
+                                placeholder="./output/xmltv.xml" data-testid="input-output-path">
                             <small>Caminho onde o arquivo XMLTV enriquecido será salvo</small>
                         </div>
                         <div class="form-group">
                             <label for="PLACEHOLDER_IMAGE_URL">URL da Imagem Placeholder:</label>
-                            <input type="text" id="PLACEHOLDER_IMAGE_URL" name="PLACEHOLDER_IMAGE_URL" placeholder="https://via.placeholder.com/300x450?text=Sem+Capa" data-testid="input-placeholder-url">
+                            <input type="text" id="PLACEHOLDER_IMAGE_URL" name="PLACEHOLDER_IMAGE_URL"
+                                placeholder="https://via.placeholder.com/300x450?text=Sem+Capa"
+                                data-testid="input-placeholder-url">
                             <small>Imagem de fallback quando não encontrar capa</small>
                         </div>
                     </div>
@@ -323,7 +344,8 @@
                         <h3>📨 Notificações</h3>
                         <div class="form-group">
                             <label for="WEBHOOK_URL">URL do Webhook:</label>
-                            <input type="text" id="WEBHOOK_URL" name="WEBHOOK_URL" placeholder="https://discord.com/api/webhooks/...">
+                            <input type="text" id="WEBHOOK_URL" name="WEBHOOK_URL"
+                                placeholder="https://discord.com/api/webhooks/...">
                         </div>
                         <div class="form-group">
                             <label for="WEBHOOK_TYPE">Tipo de Webhook:</label>
@@ -349,12 +371,14 @@
                         </div>
                         <div class="form-group">
                             <label for="LOG_FILE">Arquivo de Log:</label>
-                            <input type="text" id="LOG_FILE" name="LOG_FILE" placeholder="./xmltv-enricher.log" data-testid="input-log-file">
+                            <input type="text" id="LOG_FILE" name="LOG_FILE" placeholder="./xmltv-enricher.log"
+                                data-testid="input-log-file">
                             <small>Caminho do arquivo de log (deixe vazio para apenas console)</small>
                         </div>
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="DEBUG_URLS" name="DEBUG_URLS" data-testid="checkbox-debug-urls">
+                                <input type="checkbox" id="DEBUG_URLS" name="DEBUG_URLS"
+                                    data-testid="checkbox-debug-urls">
                                 Depurar URLs das APIs
                             </label>
                             <small>Mostra nos logs qual URL foi usada para cada pesquisa nas APIs</small>
@@ -362,15 +386,17 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary" data-testid="btn-save-config">💾 Salvar Configurações</button>
-                        <button type="button" id="btnResetConfig" class="btn btn-secondary" data-testid="btn-reset-config">🔄 Resetar</button>
+                        <button type="submit" class="btn btn-primary" data-testid="btn-save-config">💾 Salvar
+                            Configurações</button>
+                        <button type="button" id="btnResetConfig" class="btn btn-secondary"
+                            data-testid="btn-reset-config">🔄 Resetar</button>
                     </div>
                 </form>
             </div>
         </div>
 
         <!-- Tab Content: Tools -->
-<div id="tools" class="tab-content">
+        <div id="tools" class="tab-content">
             <div class="card">
                 <h2>📥 Arquivo de Auditoria</h2>
                 <p>Baixe o arquivo CSV com o resultado detalhado da última execução para análise.</p>
@@ -380,80 +406,116 @@
                     </button>
                     <span id="auditStatus" class="tool-status"></span>
                 </div>
-                
-                <div class="audit-header" style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <h3>Prévia da Auditoria</h3>
-                    <div class="audit-controls" style="display: flex; gap: 10px; align-items: center;">
-                        <select id="auditFilter" class="form-control" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
-                            <option value="">🔍 TODOS</option>
+                <div class="log-controls"
+                    style="margin-bottom: 20px; display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 10px;">
+                    <label>Linhas:
+                        <select id="auditLimit" style="margin-left: 5px; margin-right: 15px;">
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                            <option value="0">Tudo</option>
+                        </select>
+                    </label>
+                    <label>Status:
+                        <select id="auditFilter" style="margin-left: 5px; margin-right: 15px;">
+                            <option value="">TODOS</option>
                             <option value="OK">✅ OK</option>
                             <option value="NADA">❌ NADA</option>
                             <option value="REJEITADO">⚠️ REJEITADO</option>
                         </select>
-                        <button onclick="loadAuditPreview()" class="btn btn-secondary">🔄 Atualizar</button>
-                    </div>
-                </div>
-
-                <div class="audit-preview" style="margin-top: 15px;">
-                    <div class="audit-table-container">
-                        <table id="auditTable" class="audit-table">
-                            <thead>
-                                <tr>
-                                    <th>Canal</th>
-                                    <th>Título Original</th>
-                                    <th>Busca</th>
-                                    <th>Status</th>
-                                    <th>Confiança</th>
-                                    <th>Resultado</th>
-                                    <th>Fonte</th>
-                                </tr>
-                            </thead>
-                            <tbody id="auditTableBody">
-                                <tr>
-                                    <td colspan="7" style="text-align:center; color:#888;">Clique em Atualizar para carregar os dados</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    </label>
+                    <button onclick="loadAuditPreview()" class="btn btn-small">🔄 Atualizar Prévia</button>
+                    <span id="auditStatus" class="tool-status"></span>
                 </div>
             </div>
 
-            <div class="card">
-                <h2>📖 Dicionário de Limpeza</h2>
-                <p>Gerencie os prefixos que são removidos dos títulos antes da busca nas APIs.</p>
-                <div class="alert-info">
-                    <strong>💡 Dica:</strong> Adicione prefixos como "FILME:", "SÉRIE:", "ESTREIA:" etc. 
-                    O sistema removerá esses prefixos automaticamente ao buscar metadados.
+            <div class="audit-preview" style="margin-top: 8px;">
+                <div class="audit-table-container">
+                    <table id="auditTable" class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Canal</th>
+                                <th>Título Original</th>
+                                <th>Busca</th>
+                                <th>Status</th>
+                                <th>Confiança</th>
+                                <th>Resultado</th>
+                                <th>Fonte</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align:center; color:#888;">Clique em Atualizar para
+                                    carregar os dados</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                
-                <div class="dictionary-add">
-                    <div class="form-group">
-                        <label for="newTerm">Adicionar novo termo:</label>
-                        <div class="input-with-button">
-                            <input type="text" id="newTerm" placeholder="Ex: ESPECIAL" data-testid="input-new-term">
-                            <button id="btnAddTerm" class="btn btn-primary" data-testid="btn-add-term">➕ Adicionar</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="dictionary-stats">
-                    <span>Total de termos: <strong id="dictTermCount">0</strong></span>
-                </div>
-                
-                <div class="dictionary-list">
-                    <h4>📋 Termos cadastrados:</h4>
-                    <div id="dictionaryTerms" class="terms-container" data-testid="dictionary-terms">
-                        <p>Carregando...</p>
-                    </div>
-                </div>
+                <style>
+                    /* Cor de fundo para as linhas da tabela quando vazia ou com dados */
+                    .audit-table tbody tr {
+                        background-color: #f8f9fa;
+                        /* Um cinza bem claro para não parecer transparente */
+                        border-bottom: 1px solid #eee;
+                    }
+
+                    /* Cor quando passa o mouse por cima (Hover) */
+                    .audit-table tbody tr:hover {
+                        background-color: #006bd6 !important;
+                        /* Um cinza um pouco mais escuro ou azul claro */
+                        transition: background-color 0.2s ease;
+                    }
+
+                    /* Ajuste específico para a linha de "Nenhum dado" ou "Carregando" */
+                    #auditTableBody tr td[colspan="7"] {
+                        background-color: #f1f3f5;
+                        /* Um destaque levemente diferente para a mensagem de status */
+                        padding: 20px;
+                    }
+                </style>
             </div>
         </div>
 
+        <div class="card" style="margin-top: 8px;">
+            <h2>📖 Dicionário de Limpeza</h2>
+            <p>Gerencie os prefixos que são removidos dos títulos antes da busca nas APIs.</p>
+            <div class="alert-info">
+                <strong>💡 Dica:</strong> Adicione prefixos como "FILME:", "SÉRIE:", "ESTREIA:" etc.
+                O sistema removerá esses prefixos automaticamente ao buscar metadados.
+            </div>
+
+            <div class="dictionary-add">
+                <div class="form-group">
+                    <label for="newTerm">Adicionar novo termo:</label>
+                    <div class="input-with-button">
+                        <input type="text" id="newTerm" placeholder="Ex: ESPECIAL" data-testid="input-new-term">
+                        <button id="btnAddTerm" class="btn btn-primary" data-testid="btn-add-term">➕
+                            Adicionar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dictionary-stats">
+                <span>Total de termos: <strong id="dictTermCount">0</strong></span>
+            </div>
+
+            <div class="dictionary-list">
+                <h4>📋 Termos cadastrados:</h4>
+                <div id="dictionaryTerms" class="terms-container" data-testid="dictionary-terms">
+                    <p>Carregando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer>
-        <p>XMLTV Enricher v2.0 | <a href="https://github.com/jpaulovaz/xmltv-enricher" target="_blank">GitHub</a></p>
+        <p>XMLTV Enricher v2.0 | <a href="https://github.com/jpaulovaz/xmltv-enricher" target="_blank">GitHub</a>
+        </p>
     </footer>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/app.js"></script>
 </body>
+
 </html>

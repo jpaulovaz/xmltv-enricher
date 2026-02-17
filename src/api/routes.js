@@ -102,7 +102,8 @@ module.exports = (app, apiServer) => {
   // Get audit data
   app.get('/api/audit', (req, res) => {
     const auditPath = path.join(process.cwd(), 'data', 'auditoria_enricher.csv');
-    const filter = req.query.status; // OK, NADA ou REJEITADO
+    const filter = req.query.status;
+    const limit = parseInt(req.query.limit) || 20; // Padrão 20
 
     if (fs.existsSync(auditPath)) {
       const content = fs.readFileSync(auditPath, 'utf-8');
@@ -112,14 +113,13 @@ module.exports = (app, apiServer) => {
       let dataLines = lines.slice(1);
 
       if (filter && filter !== "") {
-        // Filtra as linhas que contenham o status selecionado
         dataLines = dataLines.filter(line => line.includes(filter));
       }
 
-      // Pega as últimas 100 linhas do resultado filtrado
-      const lastLines = dataLines.slice(-100);
+      // Se limit for 0, mostra tudo. Caso contrário, corta o array.
+      const resultLines = limit === 0 ? dataLines : dataLines.slice(-limit);
 
-      res.json({ audit: [header, ...lastLines] });
+      res.json({ audit: [header, ...resultLines] });
     } else {
       res.json({ audit: [] });
     }
