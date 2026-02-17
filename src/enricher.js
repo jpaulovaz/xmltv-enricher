@@ -68,17 +68,14 @@ class Enricher {
         }
       }
 
-      // Criar backup antes de processar
       if (!dryRun) {
         backupService.backup();
       }
 
-      // 1. Baixar/Ler XML
       const xmlData = await xmlParser.fetchXml(this.config.tvheadend);
       logger.info(`XML baixado com sucesso (${xmlData.length} bytes)`);
       if (apiServer) apiServer.emitLog('info', `XML baixado: ${xmlData.length} bytes`);
 
-      // 2. Parse XML
       const result = await xmlParser.parseXml(xmlData);
       const programmes = result.tv.programme;
 
@@ -87,12 +84,10 @@ class Enricher {
         return;
       }
 
-      // --- NOVIDADE: Mapear ID do Canal -> Nome do Canal ---
       const channelMap = {};
       if (result.tv.channel) {
         result.tv.channel.forEach(c => {
           if (c.$ && c.$.id && c['display-name']) {
-            // display-name pode ser array ou objeto dependendo do parser
             const dn = c['display-name'][0];
             const name = (typeof dn === 'object' && dn._) ? dn._ : dn;
             channelMap[c.$.id] = name;
@@ -100,56 +95,44 @@ class Enricher {
         });
         logger.info(`Mapeados ${Object.keys(channelMap).length} canais.`);
       }
-      // -----------------------------------------------------
 
       logger.info(`Total de programas a enriquecer: ${programmes.length}`);
       statsService.stats.totalPrograms = programmes.length;
       if (apiServer) apiServer.emitLog('info', `Processando ${programmes.length} programas...`);
 
-      // 3. Enriquecimento
       const enrichedProgrammes = [];
       const total = programmes.length;
       const batchSize = this.config.processing.concurrency || 1;
-
-      logger.info(`Processando com concorrência: ${batchSize} threads simultâneas`);
 
       for (let i = 0; i < total; i += batchSize) {
         const batch = programmes.slice(i, i + batchSize);
 
         const batchPromises = batch.map(async (prog) => {
-          // Descobre o nome do canal deste programa
           const channelId = prog.$ ? prog.$.channel : null;
           const channelName = channelMap[channelId] || channelId || 'Desconhecido';
           const progTitle = prog.title && prog.title[0] ? (typeof prog.title[0] === 'object' ? prog.title[0]._ : prog.title[0]) : 'Sem título';
 
-          // Log detalhado do programa sendo processado
-          logger.debug(`Processando: ${progTitle} (${channelName})`);
-
-          // Passa o channelName como 3º argumento
           const enriched = await this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
-          
-          // Atualizar estatísticas baseado na fonte de enriquecimento
+
           if (enriched._wasEnriched) {
             statsService.incrementEnriched();
-            
-            // Contar por fonte
+
             const source = enriched._enrichmentSource;
             if (source === 'cache') {
               statsService.incrementCacheHits();
             } else if (source && source !== 'placeholder') {
-              // Contar chamada de API
               statsService.incrementApiCall(source);
             }
-            
-            logger.debug(`✓ Enriquecido (${source}): ${progTitle}`);
           } else {
             statsService.incrementFailed();
-            logger.debug(`✗ Não enriquecido: ${progTitle}`);
           }
-          
-          // Limpar propriedades internas antes de retornar
+
+          // Limpeza das flags internas para o XML ficar limpo
           delete enriched._wasEnriched;
           delete enriched._enrichmentSource;
+          // Deletamos as novas propriedades de Alias também para não irem para o arquivo XML final
+          delete enriched.matchViaAlias;
+          delete enriched.aliasUsed;
 
           return enriched;
         });
@@ -157,18 +140,15 @@ class Enricher {
         const batchResults = await Promise.all(batchPromises);
         enrichedProgrammes.push(...batchResults);
 
-        // Log mais frequente de progresso
         const percent = Math.round(((i + batch.length) / total) * 100);
         const processed = i + batch.length;
         logger.info(`Progresso: ${percent}% (${processed}/${total} programas)`);
       }
 
-      // 4. Reconstruir XML
       result.tv.programme = enrichedProgrammes;
       const builder = new (require('xml2js').Builder)();
       const newXml = builder.buildObject(result);
 
-      // 5. Salvar (ou não, se for dry run)
       const fs = require('fs');
       if (dryRun) {
         logger.info('🧪 DRY RUN: XML não foi salvo (modo de teste)');
@@ -179,16 +159,13 @@ class Enricher {
         if (apiServer) apiServer.emitLog('info', `✅ XML salvo: ${this.config.output.path}`);
       }
 
-      // Finalizar estatísticas
       statsService.end();
       const finalStats = statsService.save();
 
-      // Enviar notificação
       if (!dryRun && finalStats) {
         await notificationService.send(finalStats);
       }
 
-      // Atualizar estado da API
       if (apiServer && finalStats) {
         apiServer.updateState({ lastStats: finalStats });
       }
@@ -199,7 +176,6 @@ class Enricher {
       statsService.addError(error);
       if (apiServer) apiServer.emitLog('error', `Erro: ${error.message}`);
     } finally {
-      logger.info('Encerrando conexões...');
       if (this.matchingService && this.matchingService.apis) {
         for (const api of this.matchingService.apis) {
           if (api.shutdown) {
@@ -207,7 +183,6 @@ class Enricher {
           }
         }
       }
-
       if (this.cacheService.cleanup) await this.cacheService.cleanup();
     }
   }

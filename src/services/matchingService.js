@@ -11,7 +11,7 @@ const FuzzyMatcher = require('../utils/fuzzyMatcher');
 const fs = require('fs');
 const path = require('path');
 
-// Tenta carregar a config de placeholders. Se falhar, usa objeto vazio para não quebrar.
+// Tenta carregar a config de placeholders.
 let placeholdersConfig = { styles: {}, channels: {} };
 try {
   placeholdersConfig = require('../config/placeholders.json');
@@ -31,36 +31,25 @@ class MatchingService {
     );
     this.threshold = configArg.matching.confidenceThreshold;
 
-    // Usar o diretório data que já é mapeado no Docker
     const dataDir = path.join(process.cwd(), 'data');
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
 
     this.auditFilePath = path.join(dataDir, 'auditoria_enricher.csv');
-    // Sempre recriar o arquivo de auditoria no início de cada execução
     fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
     logger.info(`Arquivo de auditoria criado: ${this.auditFilePath}`);
   }
 
-  // Helper para decidir qual imagem usar baseada no canal
   _getDynamicPlaceholder(channelName, defaultPlaceholder) {
     if (!channelName || channelName === '-') return defaultPlaceholder;
-
-    // 1. Verifica se o canal tem um estilo definido
     const style = placeholdersConfig.channels[channelName];
-
-    // 2. Se tiver estilo e o estilo tiver uma URL, retorna ela
     if (style && placeholdersConfig.styles[style]) {
       return placeholdersConfig.styles[style];
     }
-
-    // 3. Se não, tenta usar o estilo 'generic' do JSON
     if (placeholdersConfig.styles.generic) {
       return placeholdersConfig.styles.generic;
     }
-
-    // 4. Último caso: usa o que veio do .env
     return defaultPlaceholder;
   }
 
@@ -68,12 +57,8 @@ class MatchingService {
     const originalTitle = programme.title?.[0] || 'Unknown';
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);
-
-    // --- CÁLCULO DO PLACEHOLDER DINÂMICO ---
-    // Define qual imagem será usada caso nada seja encontrado ou a API não tenha poster.
     const activePlaceholder = this._getDynamicPlaceholder(channelName, placeholderImageUrl);
 
-    // --- ESTRATÉGIA DE NOMES ---
     const splitRegexHyphen = /(\s+[-–]\s+|\s*\()/;
     const splitRegexColon = /\s*:\s*/;
 
@@ -94,9 +79,7 @@ class MatchingService {
           if (!cached.notFound) {
             logger.info(`✓ Encontrado em cache: "${title}"`);
             this._writeToAudit(channelName, originalTitle, title, 100, cached.title, 'Cache');
-            // Passa o activePlaceholder para usar se o cache não tiver imagem
             const enrichedProg = this._applyEnrichment(programme, cached, activePlaceholder);
-            // Marcar como cache hit e enriquecido
             enrichedProg._enrichmentSource = 'cache';
             enrichedProg._wasEnriched = true;
             return enrichedProg;
@@ -107,15 +90,16 @@ class MatchingService {
       } catch (e) { }
     }
 
-    // FASE 2: APIS
+    // FASE 2: APIS (COM LÓGICA DE ALIAS)
     let bestEnriched = null;
     let bestScore = 0;
     let usedTitle = '-';
     let finalSource = '-';
+    let matchViaAlias = false;
+    let aliasUsed = '';
 
     for (const titleToTry of titlesToTry) {
       if (titlesToSkipApi.has(titleToTry)) continue;
-      let foundForThisTitle = false;
 
       for (const api of this.apis) {
         try {
@@ -127,7 +111,34 @@ class MatchingService {
           for (const yearAttempt of yearsToTry) {
             const enriched = await api.enrichProgram(titleToTry, yearAttempt);
             if (enriched) {
+              // 1. Tenta Score com título principal da API
               let score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
+              let currentMatchViaAlias = false;
+              let currentAliasUsed = '';
+
+              // 2. Se falhar, tenta Original Title (se disponível na API)
+              if (score < this.threshold && enriched.original_title) {
+                const originalScore = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.original_title);
+                if (originalScore > score) {
+                  score = originalScore;
+                  currentMatchViaAlias = true;
+                  currentAliasUsed = enriched.original_title;
+                }
+              }
+
+              // 3. Se ainda falhar, tenta Aliases (TMDb)
+              if (score < this.threshold && enriched.alternative_titles?.titles) {
+                for (const alias of enriched.alternative_titles.titles) {
+                  const aliasScore = this.fuzzyMatcher.calculateSimilarity(titleToTry, alias.title);
+                  if (aliasScore > score) {
+                    score = aliasScore;
+                    currentMatchViaAlias = true;
+                    currentAliasUsed = alias.title;
+                  }
+                }
+              }
+
+              // Bônus para ano
               if (score < this.threshold && score > 40 && !yearAttempt) score += 20;
 
               if (score > bestScore) {
@@ -135,6 +146,8 @@ class MatchingService {
                 bestEnriched = enriched;
                 usedTitle = titleToTry;
                 finalSource = enriched.source;
+                matchViaAlias = currentMatchViaAlias;
+                aliasUsed = currentAliasUsed;
               }
               if (bestScore >= 95) break;
             }
@@ -147,38 +160,37 @@ class MatchingService {
 
     // FASE 3: DECISÃO FINAL
     if (bestEnriched && bestScore >= this.threshold) {
-      logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)`);
+      const aliasSuffix = matchViaAlias ? ` (Match encontrado via Alias: ${aliasUsed})` : '';
+      logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)${aliasSuffix}`);
+
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
-      this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource);
+      this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource, aliasSuffix);
+
       const enrichedProg = this._applyEnrichment(programme, bestEnriched, activePlaceholder);
-      // Marcar como enriquecido via API
       enrichedProg._enrichmentSource = finalSource;
       enrichedProg._wasEnriched = true;
       return enrichedProg;
     }
 
+    // LOGS DE FALHA... (Mantidos como no original)
     const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
     logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"${statusMsg}`);
 
     if (bestScore > 0) {
       try { if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true }); } catch (e) { }
-      const tentativaTitulo = bestEnriched ? bestEnriched.title : "Tentativa Falha";
-      const fonteTentativa = finalSource !== '-' ? finalSource : 'Desconhecida';
-      this._writeToAudit(channelName, originalTitle, usedTitle !== '-' ? usedTitle : cleanTitle, bestScore, tentativaTitulo, fonteTentativa);
+      this._writeToAudit(channelName, originalTitle, usedTitle !== '-' ? usedTitle : cleanTitle, bestScore, bestEnriched ? bestEnriched.title : "REJEITADO", finalSource);
     } else {
       try { if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true }); } catch (e) { }
       this._writeToAudit(channelName, originalTitle, cleanTitle, 0, 'NADA ENCONTRADO', '-');
     }
 
-    // Retorna o Placeholder Dinâmico
     const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
-    // Marcar como NÃO enriquecido (usou placeholder)
     placeholderProg._enrichmentSource = 'placeholder';
     placeholderProg._wasEnriched = false;
     return placeholderProg;
   }
 
-  _writeToAudit(channel, original, search, confidence, resultTitle, source) {
+  _writeToAudit(channel, original, search, confidence, resultTitle, source, aliasSuffix = '') {
     const numericScore = (typeof confidence === 'string' ? parseFloat(confidence) : confidence);
     const isSuccess = numericScore >= this.threshold || numericScore === 100;
 
@@ -190,9 +202,11 @@ class MatchingService {
     const safeSearch = search ? search.replace(/;/g, ',') : '';
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
 
-    const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${safeResult}";${source}\n`;
+    // Adicionamos a informação de Alias no Resultado para sua Auditoria ficar completa
+    const finalResultDisplay = aliasSuffix ? `${safeResult}${aliasSuffix}` : safeResult;
 
-    // Escrever diretamente no arquivo para garantir persistência
+    const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${finalResultDisplay}";${source}\n`;
+
     try {
       fs.appendFileSync(this.auditFilePath, line, 'utf-8');
     } catch (e) {
@@ -200,17 +214,12 @@ class MatchingService {
     }
   }
 
-  // Método para fechar recursos (mantido para compatibilidade)
-  closeAuditStream() {
-    // Não há mais stream para fechar, usando appendFileSync
-  }
-
+  closeAuditStream() { }
   saveAuditCSV() { }
 
   _applyEnrichment(programme, data, placeholder) {
     const prog = { ...programme };
     const lang = config.api.language || 'pt-BR';
-    // Usa a imagem da API ou o placeholder dinâmico
     prog.icon = [{ $: { src: data.image || placeholder } }];
     if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: lang } }));
     if (data.year) prog.date = [data.year.toString()];
@@ -227,11 +236,9 @@ class MatchingService {
     const prog = { ...programme };
     const originalTitle = programme.title?.[0] || 'Unknown';
     const epInfo = parseEpisodeInfo(originalTitle);
-
     if (epInfo) {
       prog['episode-num'] = [{ _: convertToXmltvNs(epInfo.season, epInfo.episode), $: { system: 'xmltv_ns' } }];
     }
-    // Aplica a imagem temática (Kids, Sports, etc) em vez da genérica
     prog.icon = [{ $: { src: dynamicPlaceholder } }];
     return prog;
   }
