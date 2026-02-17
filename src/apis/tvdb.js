@@ -27,7 +27,6 @@ class TVDbAPI {
       const url = `${API_BASE}/login`;
       if (config.logging.debugUrls) {
         logger.debug(`TVDb: POST ${url}`);
-        logger.debug(`TVDb: Payload: ${JSON.stringify(payload)}`);
       }
 
       const response = await axios.post(url, payload, {
@@ -66,10 +65,6 @@ class TVDbAPI {
         timeout: 10000
       });
 
-      if (config.logging.debugUrls) {
-        logger.debug(`TVDb: Resposta da busca: ${response.data.data?.length || 0} resultados`);
-      }
-
       return response.data.data || [];
     } catch (error) {
       if (error.response?.status === 429) {
@@ -78,10 +73,6 @@ class TVDbAPI {
         return this.search(query, type);
       }
       logger.error(`TVDb: Erro na busca (${query}) - ${error.message}`);
-      if (config.logging.debugUrls && error.response) {
-        logger.debug(`TVDb: Status: ${error.response.status}`);
-        logger.debug(`TVDb: Resposta de erro: ${JSON.stringify(error.response.data)}`);
-      }
       return [];
     }
   }
@@ -90,16 +81,16 @@ class TVDbAPI {
     try {
       const token = await this.authenticate();
 
-      // Remover prefixo "series-" se existir (vem do PlexDB)
+      // Remover prefixo "series-" se existir
       const cleanId = seriesId.toString().replace(/^series-/, '');
 
       const url = `${API_BASE}/series/${cleanId}/extended`;
+      // 'meta: translations' ajuda a garantir nomes em outros idiomas,
+      // mas o endpoint extended já traz o array de 'aliases' por padrão.
       const params = { meta: 'translations' };
 
       if (config.logging.debugUrls) {
         logger.debug(`TVDb: GET ${url}`);
-        logger.debug(`TVDb: Parâmetros: ${JSON.stringify(params)}`);
-        logger.debug(`TVDb: ID da série: ${seriesId}`);
       }
 
       const response = await axios.get(url, {
@@ -110,26 +101,14 @@ class TVDbAPI {
         timeout: 10000
       });
 
-      if (config.logging.debugUrls) {
-        logger.debug(`TVDb: Detalhes obtidos com sucesso para série ${seriesId}`);
-      }
-
       return response.data.data || null;
     } catch (error) {
       if (error.response?.status === 429) {
-        logger.warn('TVDb: Rate limit atingido, aguardando 5 segundos...');
         await sleep(5000);
         return this.getSeriesDetails(seriesId);
       }
 
       logger.error(`TVDb: Erro ao obter detalhes da série (${seriesId}) - ${error.message}`);
-
-      if (config.logging.debugUrls) {
-        logger.debug(`TVDb: URL: ${API_BASE}/series/${seriesId}/extended`);
-        logger.debug(`TVDb: Status do erro: ${error.response?.status}`);
-        logger.debug(`TVDb: Dados do erro: ${JSON.stringify(error.response?.data)}`);
-      }
-
       return null;
     }
   }
@@ -141,7 +120,7 @@ class TVDbAPI {
       // Busca inicial
       let searchResults = await this.search(title);
 
-      if (searchResults.length === 0) {
+      if (!searchResults || searchResults.length === 0) {
         logger.debug(`TVDb: Nenhum resultado para "${title}"`);
         return null;
       }
@@ -150,34 +129,47 @@ class TVDbAPI {
       let series = searchResults[0];
 
       if (year) {
-        // Busca um resultado que bata com o ano (tolerância de 1 ano)
         const matchWithYear = searchResults.find(s => {
-          if (!s.first_air_date) return false;
-          const seriesYear = new Date(s.first_air_date).getFullYear();
+          // TVDb v4 usa firstAired ou first_air_date dependendo do endpoint
+          const dateStr = s.first_air_date || s.firstAired;
+          if (!dateStr) return false;
+          const seriesYear = new Date(dateStr).getFullYear();
           return Math.abs(seriesYear - year) <= 1;
         });
 
         if (matchWithYear) {
           series = matchWithYear;
-        } else {
-          logger.debug(`TVDb: Nenhum resultado com ano próximo a ${year} para "${title}". Usando o primeiro resultado da busca global.`);
-          // Aqui mantemos o 'series' como o primeiro resultado da busca geral (persistência)
         }
       }
 
-      // Obter detalhes completos
+      // Obter detalhes completos (incluindo aliases)
       const details = await this.getSeriesDetails(series.id);
 
       if (!details) return null;
+
+      // --- MAPEAMENTO DOS ALIASES (AQUI ESTÁ A MÁGICA) ---
+      // O TVDb retorna aliases no formato: [{ name: "Money Heist", language: "eng" }, ...]
+      // O MatchingService espera: { titles: [{ title: "Money Heist" }, ...] }
+
+      const aliases = details.aliases
+        ? details.aliases.map(alias => ({ title: alias.name }))
+        : [];
+
+      // Garantir a data correta (API v4 usa firstAired)
+      const firstAired = details.firstAired || details.first_air_date;
 
       return {
         source: 'tvdb',
         id: details.id,
         title: details.name,
+        // TVDb geralmente tem 'originalName' no endpoint extended, senão usamos o name
+        original_title: details.originalName || details.name,
+        // Injetamos os aliases no formato que o MatchingService entende
+        alternative_titles: { titles: aliases },
         description: details.overview,
         image: details.image,
         genres: details.genres?.map(g => g.name) || [],
-        year: details.first_air_date ? new Date(details.first_air_date).getFullYear() : null,
+        year: firstAired ? new Date(firstAired).getFullYear() : null,
         rating: details.contentRating,
         type: 'series'
       };
