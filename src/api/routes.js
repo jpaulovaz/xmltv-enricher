@@ -169,13 +169,12 @@ module.exports = (app, apiServer) => {
     }
   });
 
-  // Save dictionary
+  // Save dictionary (COM ORDENAÇÃO AUTOMÁTICA)
   app.post('/api/dictionary', (req, res) => {
     const { terms } = req.body;
     const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
 
     try {
-      // Header padrão
       const header = [
         '# ============================================',
         '# Dicionário de Limpeza de Títulos',
@@ -187,20 +186,27 @@ module.exports = (app, apiServer) => {
         ''
       ];
 
-      // Limpar e validar termos
+      // Limpar, validar e ORDENAR por tamanho (maior para menor)
       const cleanTerms = terms
         .map(t => t.trim())
-        .filter(t => t.length > 0 && !t.startsWith('#'));
+        .filter(t => t.length > 0 && !t.startsWith('#'))
+        .sort((a, b) => b.length - a.length);
 
       const content = header.join('\n') + cleanTerms.join('\n') + '\n';
       fs.writeFileSync(dictPath, content, 'utf-8');
 
       logger.info(`Dicionário atualizado com ${cleanTerms.length} termos`);
-      apiServer.emitLog('info', `📖 Dicionário atualizado: ${cleanTerms.length} termos`);
+      apiServer.emitLog('info', `📖 Dicionário atualizado e reordenado: ${cleanTerms.length} termos`);
+
+      // Tenta recarregar na memória imediatamente
+      try {
+        const { reloadDictionary } = require('../utils/helpers');
+        reloadDictionary();
+      } catch (e) { }
 
       res.json({
         success: true,
-        message: `Dicionário salvo com ${cleanTerms.length} termos`,
+        message: `Dicionário salvo e ordenado com ${cleanTerms.length} termos`,
         totalTerms: cleanTerms.length
       });
     } catch (error) {
@@ -212,7 +218,7 @@ module.exports = (app, apiServer) => {
     }
   });
 
-  // Add single term to dictionary
+  // Add single term to dictionary (COM REORDENAÇÃO)
   app.post('/api/dictionary/add', (req, res) => {
     const { term } = req.body;
     const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
@@ -223,24 +229,43 @@ module.exports = (app, apiServer) => {
 
     try {
       const cleanTerm = term.trim();
-
-      // Ler conteúdo atual
       let content = '';
       if (fs.existsSync(dictPath)) {
         content = fs.readFileSync(dictPath, 'utf-8');
       }
 
-      // Verificar se já existe
-      const lines = content.split('\n').map(l => l.trim().toLowerCase());
-      if (lines.includes(cleanTerm.toLowerCase())) {
+      // Lê linhas existentes ignorando comentários
+      const lines = content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('#'));
+
+      if (lines.some(l => l.toLowerCase() === cleanTerm.toLowerCase())) {
         return res.json({ success: false, error: 'Termo já existe no dicionário' });
       }
 
-      // Adicionar termo
-      fs.appendFileSync(dictPath, cleanTerm + '\n', 'utf-8');
+      // Adiciona e REORDENA TUDO
+      const allTerms = [...lines, cleanTerm].sort((a, b) => b.length - a.length);
+
+      // Recria o arquivo com header
+      const header = [
+        '# ============================================',
+        '# Dicionário de Limpeza de Títulos',
+        '# ============================================',
+        '# Adicione prefixos que devem ser removidos dos títulos',
+        '# Um termo por linha, sem dois-pontos no final',
+        '# Linhas que começam com # são ignoradas',
+        '# ============================================',
+        ''
+      ];
+
+      fs.writeFileSync(dictPath, header.join('\n') + allTerms.join('\n') + '\n', 'utf-8');
 
       logger.info(`Termo adicionado ao dicionário: ${cleanTerm}`);
       apiServer.emitLog('info', `📖 Termo adicionado: "${cleanTerm}"`);
+
+      // Atualiza memória
+      try {
+        const { reloadDictionary } = require('../utils/helpers');
+        reloadDictionary();
+      } catch (e) { }
 
       res.json({
         success: true,
@@ -297,7 +322,7 @@ module.exports = (app, apiServer) => {
 
   // Save configuration (COM REINÍCIO DO SCHEDULER)
   app.post('/api/config', (req, res) => {
-    // 1. Guarda o valor antigo do intervalo
+    // 1. Captura o intervalo atual ANTES de salvar
     const oldInterval = apiServer.config.processing.scheduleIntervalHours;
 
     const newConfig = req.body;
@@ -306,17 +331,18 @@ module.exports = (app, apiServer) => {
     if (result.success) {
       apiServer.emitLog('info', '⚙️ Configurações salvas e aplicadas!');
 
-      // 2. Verifica se o intervalo mudou
+      // 2. Verifica se o usuário mudou o intervalo
       if (newConfig.SCHEDULE_INTERVAL_HOURS) {
         const newInterval = parseInt(newConfig.SCHEDULE_INTERVAL_HOURS);
 
+        // Se mudou e é um número válido...
         if (!isNaN(newInterval) && newInterval !== oldInterval) {
           apiServer.emitLog('info', `⏰ Intervalo alterado de ${oldInterval}h para ${newInterval}h. Reiniciando Scheduler...`);
 
-          // Acessa o scheduler através do apiServer (que já tem referência a ele)
+          // Reinicia o Scheduler usando a referência dentro do apiServer
           if (apiServer.scheduler) {
             apiServer.scheduler.stop();
-            // Ao iniciar novamente, o config.js (via getters) já vai entregar o valor novo
+            // Ao iniciar novamente, ele vai ler o valor atualizado do config.js
             apiServer.scheduler.start(apiServer);
           }
         }
@@ -327,7 +353,6 @@ module.exports = (app, apiServer) => {
       res.status(400).json(result);
     }
   });
-
   // Test Tvheadend connection
   app.post('/api/test/tvheadend', async (req, res) => {
     const { url, username, password } = req.body;

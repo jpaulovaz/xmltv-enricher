@@ -1,29 +1,56 @@
 const fs = require('fs');
 const path = require('path');
+// Precisamos do logger para os avisos de recarregamento
+const logger = require('./logger');
 
-// --- CARREGAMENTO DO DICIONÁRIO ---
+// --- ESTADO GLOBAL DO DICIONÁRIO ---
 let dictionaryRegex = null;
 
+// Função interna para processar o conteúdo e criar a Regex Otimizada
+function buildDictionaryRegex(content) {
+  const lines = content.split('\n')
+    .map(line => line.trim())
+    // Remove comentários (#) e linhas vazias
+    .filter(line => line.length > 0 && !line.startsWith('#'))
+    // IMPORTANTE: Ordena do maior para o menor para evitar matches parciais incorretos
+    // Ex: "Especial Telecine" será testado antes de "Especial"
+    .sort((a, b) => b.length - a.length)
+    // Escapa caracteres especiais de regex
+    .map(line => line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  if (lines.length > 0) {
+    // Cria a Regex: ^(Palavra1|Palavra2|...)(:|\s)+
+    return new RegExp(`^(${lines.join('|')})[:\\s]+`, 'i');
+  }
+  return null;
+}
+
+// Carregamento Inicial
 try {
   const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
   if (fs.existsSync(dictPath)) {
-    const lines = fs.readFileSync(dictPath, 'utf-8')
-      .split('\n')
-      .map(line => line.trim())
-      // Remove comentários (#) e linhas vazias
-      .filter(line => line.length > 0 && !line.startsWith('#'))
-      // Escapa caracteres especiais de regex para evitar erros
-      .map(line => line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-
-    if (lines.length > 0) {
-      // Cria um Regex gigante: ^(Palavra1|Palavra2|...)(:|\s)+
-      // Isso busca qualquer uma das palavras no INÍCIO, seguida de dois pontos ou espaço
-      dictionaryRegex = new RegExp(`^(${lines.join('|')})[:\\s]+`, 'i');
-      // console.log('Dicionário de limpeza carregado com sucesso.'); // (Opcional, comentado para não poluir log)
-    }
+    const content = fs.readFileSync(dictPath, 'utf-8');
+    dictionaryRegex = buildDictionaryRegex(content);
+    // logger.info('Dicionário de limpeza carregado e ordenado.');
   }
 } catch (error) {
-  console.error(`Aviso: Não foi possível carregar cleaner_dictionary.txt: ${error.message}`);
+  logger.warn(`Aviso: Não foi possível carregar cleaner_dictionary.txt: ${error.message}`);
+}
+
+// Função para recarregar o dicionário (Usada pela API/Web)
+function reloadDictionary() {
+  try {
+    const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+    if (fs.existsSync(dictPath)) {
+      const content = fs.readFileSync(dictPath, 'utf-8');
+      dictionaryRegex = buildDictionaryRegex(content);
+      logger.info('📖 Dicionário recarregado e reordenado na memória com sucesso.');
+      return true;
+    }
+  } catch (error) {
+    logger.error(`Erro ao recarregar dicionário: ${error.message}`);
+  }
+  return false;
 }
 
 // ----------------------------------
@@ -61,20 +88,15 @@ const extractCleanTitle = (title) => {
   if (dictionaryRegex) {
     cleaned = cleaned.replace(dictionaryRegex, '');
   } else {
-    // Fallback: Se o arquivo não existir, usa o básico hardcoded (segurança)
+    // Fallback de segurança caso o dicionário esteja vazio
     const fallbackPrefix = /^(FILME|SERIE|SÉRIE|EPISODIO|EPISÓDIO):\s*/i;
     cleaned = cleaned.replace(fallbackPrefix, '');
   }
 
-  // 3. Remove sufixos técnicos (HD, FHD, 4K, Dublado...)
+  // 3. Remove sufixos técnicos
   cleaned = cleaned.replace(/\s(\(?(HD|FHD|4K|3D|Dublado|Legendado)\)?)$/i, '');
 
-  // 4. CORREÇÃO DO HÍFEN (Ajuste Crítico da Auditoria)
-  // ANTES: Cortava em qualquer hifen (-). Ex: "Homem-Aranha" virava "Homem".
-  // AGORA: Corta apenas se tiver espaço antes OU for parenteses.
-  // Ex: "Homem-Aranha" -> Mantém "Homem-Aranha"
-  // Ex: "Matrix - O Filme" -> Vira "Matrix"
-  // Ex: "Batman (1989)" -> Vira "Batman"
+  // 4. CORREÇÃO DO HÍFEN
   const splitRegex = /(\s+[-–]\s+|\s*\()/;
   cleaned = cleaned.split(splitRegex)[0];
 
@@ -83,11 +105,6 @@ const extractCleanTitle = (title) => {
 
 const cleanSeriesInfo = (title) => {
   if (!title) return '';
-
-  // Regex Turbinado:
-  // 1. Procura separadores como " - ", " : " ou espaço
-  // 2. Procura indicadores de temporada/episódio (T1, S01, Ep, Cap, Temp)
-  // 3. Corta tudo dali pra frente.
   return title
     .replace(/(?:\s+(?:[-–:]\s+)?)(?:(?:\d{1,2}[ªºa]?\s*)?(?:Temp(?:orada|\.)?|T\d+)|(?:Ep(?:is[oó]dio|\.)?\s*\d+)|(?:S\d+E\d+)|(?:Cap(?:[ií]tulo|\.)?\s*\d+)).*$/i, '')
     .trim();
@@ -126,7 +143,6 @@ const convertToXmltvNs = (season, episode) => {
   return `${s}.${e}.`;
 };
 
-// Função de sleep para rate limiting
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = {
@@ -137,5 +153,6 @@ module.exports = {
   cleanSeriesInfo,
   parseEpisodeInfo,
   convertToXmltvNs,
+  reloadDictionary, // Nova função exportada
   sleep
 };
