@@ -194,15 +194,19 @@ class MatchingService {
     const numericScore = (typeof confidence === 'string' ? parseFloat(confidence) : confidence);
     const isSuccess = numericScore >= this.threshold || numericScore === 100;
 
-    let status = '❌ NADA';
-    if (isSuccess) status = '✅ OK';
-    else if (numericScore > 0) status = '⚠️ REJEITADO';
+    let status = '❌ Não Encontrado';
+    if (isSuccess) {
+      // Se houver um aliasSuffix (ou seja, foi achado via Alias), mudamos o status
+      status = aliasSuffix ? '✅ Correspondência Por Alias' : '✅ Correspondência Encontrada';
+    } else if (numericScore > 0) {
+      status = '⚠️ Baixa Confiança - Rejeitado';
+    }
 
     const safeOriginal = original ? original.replace(/;/g, ',') : '';
     const safeSearch = search ? search.replace(/;/g, ',') : '';
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
 
-    // Adicionamos a informação de Alias no Resultado para sua Auditoria ficar completa
+    // O finalResultDisplay continua mostrando qual foi o nome usado
     const finalResultDisplay = aliasSuffix ? `${safeResult}${aliasSuffix}` : safeResult;
 
     const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${finalResultDisplay}";${source}\n`;

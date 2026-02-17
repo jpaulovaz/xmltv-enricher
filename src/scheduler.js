@@ -1,79 +1,81 @@
 const cron = require('node-cron');
-const config = require('./config');
 const logger = require('./utils/logger');
-const Enricher = require('./enricher');
 
-let task = null;
-let isPaused = false;
-
-const start = () => {
-  if (task) {
-    logger.warn('Scheduler já está rodando.');
-    return;
+class Scheduler {
+  constructor(config, enricher) {
+    this.config = config;
+    this.enricher = enricher;
+    this.task = null;
+    this.isRunning = false;
+    this.paused = false;
+    this.apiServer = null; // Guardará a referência do servidor
   }
 
-  // Pega o intervalo do novo local no config (padrão 12h)
-  const hours = config.processing && config.processing.scheduleHours
-    ? config.processing.scheduleHours
-    : 12;
+  // Agora aceita apiServer como parâmetro opcional
+  start(apiServer = null) {
+    this.apiServer = apiServer;
+    const interval = this.config.processing.scheduleIntervalHours || 12;
+    // Converte horas para cron (ex: "0 */12 * * *")
+    const cronExpression = `0 */${interval} * * *`;
 
-  // Cron pattern: minuto 0, a cada X horas
-  const cronExpression = `0 */${hours} * * *`;
+    logger.info(`Scheduler iniciado. Intervalo: ${interval} hora(s). (Cron: ${cronExpression})`);
 
-  logger.info(`Agendador iniciado. Execução programada a cada ${hours} horas (Cron: "${cronExpression}")`);
+    this.task = cron.schedule(cronExpression, () => {
+      this.runTask();
+    });
 
-  task = cron.schedule(cronExpression, async () => {
-    if (isPaused) {
-      logger.info('⏸️ Scheduler pausado. Execução ignorada.');
+    // Se configurado para rodar ao iniciar
+    if (this.config.processing.runOnStart) {
+      logger.info('Configuração runOnStart ativa. Executando agora...');
+      // Pequeno delay para garantir que o servidor subiu
+      setTimeout(() => this.runTask(), 5000);
+    }
+  }
+
+  stop() {
+    if (this.task) {
+      this.task.stop();
+      logger.info('Scheduler parado.');
+    }
+  }
+
+  pause() {
+    this.paused = true;
+    logger.info('Scheduler pausado.');
+  }
+
+  resume() {
+    this.paused = false;
+    logger.info('Scheduler retomado.');
+  }
+
+  async runTask() {
+    if (this.paused) {
+      logger.warn('Tarefa agendada ignorada (Scheduler pausado).');
       return;
     }
 
-    logger.info('⏳ Iniciando execução agendada do Enricher...');
+    if (this.isRunning) {
+      logger.warn('Tarefa agendada ignorada (Enricher já está rodando).');
+      return;
+    }
+
+    this.isRunning = true;
     try {
-      // Instancia o Enricher com a configuração global
-      const enricher = new Enricher(config);
-      await enricher.run();
+      logger.info('🕒 Iniciando execução agendada...');
+      // AQUI ESTÁ A CORREÇÃO: Passamos o this.apiServer para o enricher
+      await this.enricher.run(false, this.apiServer);
     } catch (error) {
       logger.error(`Erro na execução agendada: ${error.message}`);
+    } finally {
+      this.isRunning = false;
+
+      // Atualizar status no front-end informando que acabou (idle)
+      if (this.apiServer) {
+        this.apiServer.updateState({ running: false, lastRun: new Date() });
+      }
     }
-  });
-};
-
-const stop = () => {
-  if (task) {
-    task.stop();
-    task = null;
-    isPaused = false;
-    logger.info('Scheduler parado.');
   }
-};
+}
 
-const pause = () => {
-  if (!task) {
-    logger.warn('Scheduler não está rodando.');
-    return false;
-  }
-  isPaused = true;
-  logger.info('⏸️ Scheduler pausado.');
-  return true;
-};
-
-const resume = () => {
-  if (!task) {
-    logger.warn('Scheduler não está rodando.');
-    return false;
-  }
-  isPaused = false;
-  logger.info('▶️ Scheduler retomado.');
-  return true;
-};
-
-const isPausedStatus = () => isPaused;
-
-module.exports = {
-  start,
-  stop,
-  pause,
-  resume,
-  isPausedStatus
-};
+module.exports = Scheduler;

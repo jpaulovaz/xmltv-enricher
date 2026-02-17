@@ -414,15 +414,19 @@
                             <option value="50">50</option>
                             <option value="100">100</option>
                             <option value="200">200</option>
+                            <option value="300">300</option>
+                            <option value="400">400</option>
+                            <option value="500">500</option>
                             <option value="0">Tudo</option>
                         </select>
                     </label>
                     <label>Status:
                         <select id="auditFilter" style="margin-left: 5px; margin-right: 15px;">
-                            <option value="">TODOS</option>
-                            <option value="OK">✅ OK</option>
-                            <option value="NADA">❌ NADA</option>
-                            <option value="REJEITADO">⚠️ REJEITADO</option>
+                            <option value="">Mostrar Todos</option>
+                            <option value="Não Encontrado">❌ Não Encontrado</option>
+                            <option value="Correspondência Encontrada">✅ Correspondência Encontrada</option>
+                            <option value="Correspondência Por Alias">✅ Correspondência Por Alias</option>
+                            <option value="Baixa Confiança - Rejeitado">⚠️ Baixa Confiança - Rejeitado</option>
                         </select>
                     </label>
                     <button onclick="loadAuditPreview()" class="btn btn-small">🔄 Atualizar Prévia</button>
