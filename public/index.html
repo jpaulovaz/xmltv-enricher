@@ -475,40 +475,40 @@
                     }
                 </style>
             </div>
-        </div>
 
-        <div class="card" style="margin-top: 8px;">
-            <h2>📖 Dicionário de Limpeza</h2>
-            <p>Gerencie os prefixos que são removidos dos títulos antes da busca nas APIs.</p>
-            <div class="alert-info">
-                <strong>💡 Dica:</strong> Adicione prefixos como "FILME:", "SÉRIE:", "ESTREIA:" etc.
-                O sistema removerá esses prefixos automaticamente ao buscar metadados.
-            </div>
 
-            <div class="dictionary-add">
-                <div class="form-group">
-                    <label for="newTerm">Adicionar novo termo:</label>
-                    <div class="input-with-button">
-                        <input type="text" id="newTerm" placeholder="Ex: ESPECIAL" data-testid="input-new-term">
-                        <button id="btnAddTerm" class="btn btn-primary" data-testid="btn-add-term">➕
-                            Adicionar</button>
+            <div class="card" style="margin-top: 8px;">
+                <h2>📖 Dicionário de Limpeza</h2>
+                <p>Gerencie os prefixos que são removidos dos títulos antes da busca nas APIs.</p>
+                <div class="alert-info">
+                    <strong>💡 Dica:</strong> Adicione prefixos como "FILME:", "SÉRIE:", "ESTREIA:" etc.
+                    O sistema removerá esses prefixos automaticamente ao buscar metadados.
+                </div>
+
+                <div class="dictionary-add">
+                    <div class="form-group">
+                        <label for="newTerm">Adicionar novo termo:</label>
+                        <div class="input-with-button">
+                            <input type="text" id="newTerm" placeholder="Ex: ESPECIAL" data-testid="input-new-term">
+                            <button id="btnAddTerm" class="btn btn-primary" data-testid="btn-add-term">➕
+                                Adicionar</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="dictionary-stats">
-                <span>Total de termos: <strong id="dictTermCount">0</strong></span>
-            </div>
+                <div class="dictionary-stats">
+                    <span>Total de termos: <strong id="dictTermCount">0</strong></span>
+                </div>
 
-            <div class="dictionary-list">
-                <h4>📋 Termos cadastrados:</h4>
-                <div id="dictionaryTerms" class="terms-container" data-testid="dictionary-terms">
-                    <p>Carregando...</p>
+                <div class="dictionary-list">
+                    <h4>📋 Termos cadastrados:</h4>
+                    <div id="dictionaryTerms" class="terms-container" data-testid="dictionary-terms">
+                        <p>Carregando...</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
     <footer>
         <p>XMLTV Enricher v2.0 | <a href="https://github.com/jpaulovaz/xmltv-enricher" target="_blank">GitHub</a>
         </p>
