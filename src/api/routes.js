@@ -116,8 +116,8 @@ module.exports = (app, apiServer) => {
         dataLines = dataLines.filter(line => line.includes(filter));
       }
 
-      // Pega as últimas 20 linhas do resultado filtrado
-      const lastLines = dataLines.slice(-20);
+      // Pega as últimas 100 linhas do resultado filtrado
+      const lastLines = dataLines.slice(-100);
 
       res.json({ audit: [header, ...lastLines] });
     } else {
