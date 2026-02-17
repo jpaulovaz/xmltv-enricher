@@ -295,13 +295,33 @@ module.exports = (app, apiServer) => {
     res.json(config);
   });
 
-  // Save configuration
+  // Save configuration (COM REINÍCIO DO SCHEDULER)
   app.post('/api/config', (req, res) => {
+    // 1. Guarda o valor antigo do intervalo
+    const oldInterval = apiServer.config.processing.scheduleIntervalHours;
+
     const newConfig = req.body;
     const result = configService.saveConfig(newConfig);
 
     if (result.success) {
       apiServer.emitLog('info', '⚙️ Configurações salvas e aplicadas!');
+
+      // 2. Verifica se o intervalo mudou
+      if (newConfig.SCHEDULE_INTERVAL_HOURS) {
+        const newInterval = parseInt(newConfig.SCHEDULE_INTERVAL_HOURS);
+
+        if (!isNaN(newInterval) && newInterval !== oldInterval) {
+          apiServer.emitLog('info', `⏰ Intervalo alterado de ${oldInterval}h para ${newInterval}h. Reiniciando Scheduler...`);
+
+          // Acessa o scheduler através do apiServer (que já tem referência a ele)
+          if (apiServer.scheduler) {
+            apiServer.scheduler.stop();
+            // Ao iniciar novamente, o config.js (via getters) já vai entregar o valor novo
+            apiServer.scheduler.start(apiServer);
+          }
+        }
+      }
+
       res.json(result);
     } else {
       res.status(400).json(result);
