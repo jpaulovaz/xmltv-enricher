@@ -10,7 +10,6 @@ const {
 const FuzzyMatcher = require('../utils/fuzzyMatcher');
 const fs = require('fs');
 const path = require('path');
-const ManualOverrideService = require('./manualOverrideService');
 
 // Tenta carregar a config de placeholders.
 let placeholdersConfig = { styles: {}, channels: {} };
@@ -55,26 +54,6 @@ class MatchingService {
   }
 
   async enrichProgram(programme, placeholderImageUrl, channelName = '-') {
-    // 1️⃣ Verificar override manual
-    const override = await ManualOverrideService.findByTitle(programme.title);
-
-    if (override) {
-      logger.info(`Manual override encontrado para ${programme.title}`);
-
-      const tmdb = require('../apis/tmdb');
-
-      const forcedData = await tmdb.getById(
-        override.forced_tmdb_id,
-        override.forced_type
-      );
-
-      return {
-        ...forcedData,
-        confidence: 1.0,
-        source: 'manual_override'
-      };
-    }
-
     const originalTitle = programme.title?.[0] || 'Unknown';
     const yearFromTitle = extractYearFromTitle(originalTitle);
     const cleanTitle = extractCleanTitle(originalTitle);

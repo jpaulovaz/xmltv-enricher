@@ -7,7 +7,7 @@ class CacheService {
   constructor(config) {
     this.enabled = config.cache.enabled;
     this.ttlMs = config.cache.ttlHours * 60 * 60 * 1000;
-
+    
     // Usar diretório data/ para compatibilidade com Docker
     const dataDir = path.join(process.cwd(), 'data');
     const fs = require('fs');
@@ -41,18 +41,6 @@ class CacheService {
                 data TEXT,
                 timestamp INTEGER
               )
-            `);
-
-            this.db.exec(`
-              CREATE TABLE IF NOT EXISTS manual_overrides (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  normalized_title TEXT NOT NULL UNIQUE,
-                  original_title TEXT,
-                  forced_tmdb_id INTEGER NOT NULL,
-                  forced_type TEXT CHECK(forced_type IN ('movie','tv')) NOT NULL,
-                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-              );
             `);
 
             this.db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp)`, (err) => {
