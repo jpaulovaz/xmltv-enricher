@@ -25,6 +25,8 @@
             <button class="tab-button active" data-tab="dashboard" data-testid="tab-dashboard">📊 Dashboard</button>
             <button class="tab-button" data-tab="settings" data-testid="tab-settings">⚙️ Configurações</button>
             <button class="tab-button" data-tab="tools" data-testid="tab-tools">🛠️ Ferramentas</button>
+            <button class="tab-button" data-tab="overrides" data-testid="tab-overrides"> 🧠 Revisão Manual </button>
+
         </div>
 
         <!-- Tab Content: Dashboard -->
@@ -512,6 +514,57 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab Content: Manual Overrides -->
+        <div id="overrides" class="tab-content">
+            <div class="card">
+                <h2>🧠 Revisão Manual de Matches</h2>
+
+                <div class="form-group">
+                    <label for="overrideTitle">Título Original:</label>
+                    <input type="text" id="overrideTitle" placeholder="Ex: King Kong">
+                </div>
+
+                <div class="form-group">
+                    <label for="overrideTmdbId">TMDB ID:</label>
+                    <input type="number" id="overrideTmdbId" placeholder="Ex: 24428">
+                </div>
+
+                <div class="form-group">
+                    <label for="overrideType">Tipo:</label>
+                    <select id="overrideType">
+                        <option value="movie">Filme</option>
+                        <option value="tv">Série</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveOverride()">
+                    💾 Salvar Override
+                </button>
+            </div>
+
+            <div class="card" style="margin-top:20px;">
+                <h3>📋 Overrides Salvos</h3>
+
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>TMDB ID</th>
+                            <th>Tipo</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overridesTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align:center; color:#888;">
+                                Carregando...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
     <footer>
         <p>XMLTV Enricher v2.0 | <a href="https://github.com/jpaulovaz/xmltv-enricher" target="_blank">GitHub</a>
@@ -520,6 +573,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/app.js"></script>
+    <script src="/overrides.js"></script>
 </body>
 
 </html>

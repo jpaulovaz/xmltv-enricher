@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const ConfigService = require('../services/configService');
 const fs = require('fs');
 const path = require('path');
+const ManualOverrideService = require('../services/manualOverrideService');
 
 const configService = new ConfigService();
 
@@ -379,5 +380,28 @@ module.exports = (app, apiServer) => {
     const { apiKey } = req.body;
     const result = await configService.testOmdbApiKey(apiKey);
     res.json(result);
+  });
+
+  // Manual Overrides
+  app.get('/api/overrides', async (req, res) => {
+    const data = await ManualOverrideService.listAll();
+    res.json(data);
+  });
+
+  app.post('/api/overrides', async (req, res) => {
+    const { title, tmdbId, type } = req.body;
+
+    if (!title || !tmdbId || !type) {
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+
+    await ManualOverrideService.saveOverride(title, tmdbId, type);
+
+    res.json({ success: true });
+  });
+
+  app.delete('/api/overrides/:id', async (req, res) => {
+    await ManualOverrideService.deleteById(req.params.id);
+    res.json({ success: true });
   });
 };

@@ -53,6 +53,10 @@ tabButtons.forEach(button => {
         if (tabName === 'settings') {
             loadConfig();
         }
+
+        if (tabName === 'overrides') {
+            loadOverrides();
+        }
     });
 });
 
