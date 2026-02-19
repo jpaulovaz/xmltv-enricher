@@ -15,9 +15,10 @@ const PlexDBAPI = require('./apis/plexdb');
 const IMDbAPI = require('./apis/imdb');
 
 class Enricher {
-  constructor(config) {
+  constructor(config, manualOverrideService) {
     this.config = config;
     this.cacheService = new CacheService(config);
+    this.manualOverrideService = manualOverrideService;
 
     const apis = [];
 
@@ -47,7 +48,8 @@ class Enricher {
     this.matchingService = new MatchingService(
       ...apis,
       config,
-      this.cacheService
+      this.cacheService,
+      this.manualOverrideService
     );
   }
 

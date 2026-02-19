@@ -66,7 +66,36 @@ class TMDbAPI {
       return [];
     }
   }
+  // --- NOVO MÉTODO PARA MANUAL OVERRIDE ---
+  async enrichById(id, type = 'movie') {
+    try {
+      let details;
+      if (type === 'movie') {
+        details = await this.getMovieDetails(id);
+      } else {
+        details = await this.getTVDetails(id);
+      }
 
+      if (details) {
+        return {
+          title: details.title || details.name,
+          original_title: details.original_title || details.original_name,
+          year: (details.release_date || details.first_air_date || '').split('-')[0],
+          // Garantimos o IMAGE_BASE aqui
+          image: details.poster_path ? `${IMAGE_BASE}${details.poster_path}` : null,
+          description: details.overview,
+          rating: details.vote_average,
+          genres: details.genres ? details.genres.map(g => g.name) : [],
+          source: 'tmdb', // Mantenha minúsculo para bater com os ícones/stats
+          type: type
+        };
+      }
+      return null;
+    } catch (error) {
+      logger.error(`[TMDb] Erro ao buscar por ID ${id}: ${error.message}`);
+      return null;
+    }
+  }
   // --- AQUI ESTÁ A MUDANÇA PARA OS ALIASES ---
   async getMovieDetails(movieId) {
     try {

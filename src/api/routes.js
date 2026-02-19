@@ -45,9 +45,8 @@ module.exports = (app, apiServer) => {
         apiServer.updateState({ running: true, lastRun: new Date().toISOString() });
         apiServer.emitLog('info', `Iniciando execução manual${dryRun ? ' (DRY RUN)' : ''}...`);
 
-        const enricher = new Enricher(apiServer.config);
+        const enricher = new Enricher(apiServer.config, apiServer.manualOverrideService);
         await enricher.run(dryRun, apiServer);
-
         apiServer.updateState({ running: false });
         apiServer.emitLog('info', 'Execução concluída com sucesso!');
       } catch (error) {
@@ -380,4 +379,113 @@ module.exports = (app, apiServer) => {
     const result = await configService.testOmdbApiKey(apiKey);
     res.json(result);
   });
+  // ==================================================================
+  // 📍 FASE 3: ROTAS DE MANUAL OVERRIDE & AUDITORIA DE FALHAS
+  // ==================================================================
+
+  // 1. Listar todos os overrides ativos
+  app.get('/api/overrides', (req, res) => {
+    // Acessa o serviço que injetamos no apiServer
+    const service = apiServer.manualOverrideService;
+
+    if (!service) {
+      return res.status(500).json({ error: 'ManualOverrideService não inicializado' });
+    }
+
+    try {
+      const overrides = service.getAll();
+      res.json(overrides);
+    } catch (error) {
+      logger.error(`Erro ao listar overrides: ${error.message}`);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 2. Adicionar/Atualizar um Override
+  app.post('/api/overrides', (req, res) => {
+    const service = apiServer.manualOverrideService;
+    const { title, tmdbId, type } = req.body;
+
+    if (!service) return res.status(500).json({ error: 'Service not loaded' });
+    if (!title || !tmdbId) return res.status(400).json({ error: 'Título e ID são obrigatórios' });
+
+    try {
+      service.add(title, tmdbId, type || 'movie');
+      apiServer.emitLog('info', `📌 Override Manual Criado: "${title}" -> TMDb ID ${tmdbId}`);
+      res.json({ success: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // 3. Remover um Override
+  app.delete('/api/overrides/:title', (req, res) => {
+    const service = apiServer.manualOverrideService;
+    if (!service) return res.status(500).json({ error: 'Service not loaded' });
+
+    try {
+      const title = decodeURIComponent(req.params.title);
+      const removed = service.remove(title);
+
+      if (removed) {
+        apiServer.emitLog('info', `🗑️ Override Removido: "${title}"`);
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: 'Override não encontrado' });
+      }
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // 4. (BÔNUS) Listar Apenas Falhas Recentes
+  // Isso vai alimentar a tabela "O que precisa de atenção" na aba nova
+  app.get('/api/audit/failures', (req, res) => {
+    const auditPath = path.join(process.cwd(), 'data', 'auditoria_enricher.csv');
+
+    if (!fs.existsSync(auditPath)) return res.json([]);
+
+    try {
+      const content = fs.readFileSync(auditPath, 'utf-8');
+      const lines = content.split('\n').filter(line => line.trim() !== '');
+
+      // Pula o cabeçalho e pega as últimas 500 linhas (para não pesar)
+      const recentLines = lines.slice(1).slice(-5000).reverse();
+
+      const failures = recentLines
+        .map(line => {
+          // Parser simples de CSV (considerando ; como separador)
+          const parts = line.split(';');
+          if (parts.length < 5) return null;
+
+          // Remove aspas extras que o CSV possa ter
+          const clean = (str) => str ? str.replace(/^"|"$/g, '') : '';
+
+          return {
+            channel: clean(parts[0]),
+            originalTitle: clean(parts[1]),
+            status: clean(parts[3]),
+            confidence: clean(parts[4])
+          };
+        })
+        .filter(item => item && (
+          item.status.includes('Não Encontrado') ||
+          item.status.includes('Baixa Confiança') ||
+          item.status.includes('REJEITADO')
+        ))
+        // Remove duplicatas de títulos (para não mostrar o mesmo erro 10 vezes)
+        .filter((v, i, a) => a.findIndex(t => t.originalTitle === v.originalTitle) === i);
+
+      res.json(failures.slice(0, 100)); // Retorna top 100 falhas únicas
+    } catch (error) {
+      logger.error(`Erro ao ler auditoria: ${error.message}`);
+      res.json([]);
+    }
+  });
+
+  // ==================================================================
+
+
+
+
 };

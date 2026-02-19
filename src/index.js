@@ -3,8 +3,12 @@ const logger = require('./utils/logger');
 const Enricher = require('./enricher');
 const APIServer = require('./api/server');
 const Scheduler = require('./scheduler');
+const ManualOverrideService = require('./services/manualOverrideService');
 
 async function main() {
+
+  const manualOverrideService = new ManualOverrideService(config);
+
   try {
     logger.info('Iniciando XMLTV Enricher...');
     logger.info('Validando configuração...');
@@ -41,7 +45,7 @@ async function main() {
     // -----------------------------------------------------------
 
     // 1. Inicializar Enricher
-    const enricher = new Enricher(config);
+    const enricher = new Enricher(config, manualOverrideService);
 
     // 2. Inicializar Scheduler (Passando config e enricher)
     // Isso usa a nova classe Scheduler que permite controle via API
@@ -49,7 +53,7 @@ async function main() {
 
     // 3. Inicializar API Server (Dashboard e REST API)
     // O Server precisa do scheduler para comandos de pause/resume/run
-    const apiServer = new APIServer(config, enricher, scheduler);
+    const apiServer = new APIServer(config, enricher, scheduler, manualOverrideService);
 
     // Iniciar servidor API
     await apiServer.start();

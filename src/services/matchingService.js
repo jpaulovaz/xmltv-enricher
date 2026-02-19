@@ -21,9 +21,12 @@ try {
 
 class MatchingService {
   constructor(...args) {
-    this.cacheService = args[args.length - 1];
-    const configArg = args[args.length - 2];
-    this.apis = args.slice(0, -2).filter(api => api !== null);
+    const lastArg = args[args.length - 1];
+    this.manualOverrideService = (args.length > 3) ? args[args.length - 1] : null;
+    this.cacheService = this.manualOverrideService ? args[args.length - 2] : args[args.length - 1];
+    const configArg = this.manualOverrideService ? args[args.length - 3] : args[args.length - 2];
+    const apisEndIndex = this.manualOverrideService ? -3 : -2;
+    this.apis = args.slice(0, apisEndIndex).filter(api => api !== null);
 
     this.fuzzyMatcher = new FuzzyMatcher(
       configArg.matching.algorithm,
@@ -37,8 +40,14 @@ class MatchingService {
     }
 
     this.auditFilePath = path.join(dataDir, 'auditoria_enricher.csv');
+
+    // Sobrescreve o arquivo com o cabeçalho (limpando o conteúdo anterior)
     fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
-    logger.info(`Arquivo de auditoria criado: ${this.auditFilePath}`);
+    // DEBUG: Log das APIs carregadas
+    logger.info(`MatchingService inicializado com ${this.apis.length} API(s):`);
+    this.apis.forEach((api, idx) => {
+      logger.info(`  [${idx + 1}] ${api.constructor.name}`);
+    });
   }
 
   _getDynamicPlaceholder(channelName, defaultPlaceholder) {
@@ -56,12 +65,78 @@ class MatchingService {
   async enrichProgram(programme, placeholderImageUrl, channelName = '-') {
     const originalTitle = programme.title?.[0] || 'Unknown';
     const yearFromTitle = extractYearFromTitle(originalTitle);
-    const cleanTitle = extractCleanTitle(originalTitle);
+    const cleanTitle = extractCleanTitle(cleanSeriesInfo(originalTitle));
     const activePlaceholder = this._getDynamicPlaceholder(channelName, placeholderImageUrl);
+
+    // --- BLOCO DE OVERRIDE (CORRIGIDO) ---
+    if (this.manualOverrideService) {
+      // Gerar múltiplas variações do título para buscar override
+      const titleVariations = [
+        cleanTitle,
+        originalTitle,
+        cleanSeriesInfo(originalTitle),
+        originalTitle.split(/[-–]/)[0].trim(),
+        cleanTitle.split(/[-–]/)[0].trim()
+      ].filter((v, i, a) => v && a.indexOf(v) === i);
+
+      let override = null;
+      let overrideKey = null;
+
+      for (const titleVar of titleVariations) {
+        override = this.manualOverrideService.get(titleVar);
+        if (override) {
+          overrideKey = titleVar;
+          break;
+        }
+      }
+
+      if (override && override.tmdbId) {
+        logger.info(`⚡ Override Manual identificado: "${originalTitle}" (chave: "${overrideKey}") -> TMDb ID ${override.tmdbId}`);
+        logger.debug(`DEBUG: Procurando TMDbAPI entre ${this.apis.length} APIs...`);
+        const tmdbApi = this.apis.find(api => api.constructor.name === 'TMDbAPI');
+        logger.debug(`DEBUG: TMDbAPI encontrada? ${tmdbApi ? 'SIM' : 'NAO'}`);
+        logger.debug(`DEBUG: Verificando se TMDbAPI tem enrichById: ${tmdbApi && typeof tmdbApi.enrichById === 'function' ? 'SIM' : 'NAO'}`);
+        if (tmdbApi && typeof tmdbApi.enrichById === 'function') {
+          try {
+            const enriched = await tmdbApi.enrichById(override.tmdbId, override.type);
+            if (enriched && enriched.title) {
+              logger.info(`✅ Dados do override obtidos com sucesso: ${enriched.title}`);
+              this._writeToAudit(channelName, originalTitle, `ID: ${override.tmdbId}`, 100, enriched.title, 'Manual Override');
+              const result = this._applyEnrichment(programme, enriched, activePlaceholder);
+              result._enrichmentSource = 'manual_override';
+              result._wasEnriched = true;
+              return result;
+            } else {
+              logger.warn(`⚠️ enrichById retornou dados inválidos para TMDb ID ${override.tmdbId}`);
+              this._writeToAudit(channelName, originalTitle, `ID: ${override.tmdbId}`, 0, 'OVERRIDE INVÁLIDO', 'Manual Override');
+              // Retorna placeholder em vez de continuar buscando
+              const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
+              placeholderProg._enrichmentSource = 'placeholder';
+              placeholderProg._wasEnriched = false;
+              return placeholderProg;
+            }
+          } catch (error) {
+            logger.error(`❌ Erro ao buscar dados do override (ID ${override.tmdbId}): ${error.message}`);
+            this._writeToAudit(channelName, originalTitle, `ID: ${override.tmdbId}`, 0, `ERRO: ${error.message}`, 'Manual Override');
+            // Retorna placeholder em vez de continuar buscando
+            const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
+            placeholderProg._enrichmentSource = 'placeholder';
+            placeholderProg._wasEnriched = false;
+            return placeholderProg;
+          }
+        } else {
+          logger.warn(`⚠️ TMDb API não disponível para processar override`);
+          // Retorna placeholder em vez de continuar buscando
+          const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
+          placeholderProg._enrichmentSource = 'placeholder';
+          placeholderProg._wasEnriched = false;
+          return placeholderProg;
+        }
+      }
+    } // <-- CHAVE FECHADA AQUI PARA NÃO PRENDER O RESTO DO CÓDIGO
 
     const splitRegexHyphen = /(\s+[-–]\s+|\s*\()/;
     const splitRegexColon = /\s*:\s*/;
-
     const titlesToTry = [
       cleanTitle,
       cleanSeriesInfo(cleanTitle),
@@ -90,7 +165,7 @@ class MatchingService {
       } catch (e) { }
     }
 
-    // FASE 2: APIS (COM LÓGICA DE ALIAS)
+    // FASE 2: APIS
     let bestEnriched = null;
     let bestScore = 0;
     let usedTitle = '-';
@@ -100,23 +175,17 @@ class MatchingService {
 
     for (const titleToTry of titlesToTry) {
       if (titlesToSkipApi.has(titleToTry)) continue;
-
       for (const api of this.apis) {
         try {
           if (api.initialize) await api.initialize();
           if (api.constructor.name === 'TVDbAPI') await api.authenticate();
-
           const yearsToTry = yearFromTitle ? [yearFromTitle, null] : [null];
-
           for (const yearAttempt of yearsToTry) {
             const enriched = await api.enrichProgram(titleToTry, yearAttempt);
             if (enriched) {
-              // 1. Tenta Score com título principal da API
               let score = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.title || titleToTry);
               let currentMatchViaAlias = false;
               let currentAliasUsed = '';
-
-              // 2. Se falhar, tenta Original Title (se disponível na API)
               if (score < this.threshold && enriched.original_title) {
                 const originalScore = this.fuzzyMatcher.calculateSimilarity(titleToTry, enriched.original_title);
                 if (originalScore > score) {
@@ -125,8 +194,6 @@ class MatchingService {
                   currentAliasUsed = enriched.original_title;
                 }
               }
-
-              // 3. Se ainda falhar, tenta Aliases (TMDb)
               if (score < this.threshold && enriched.alternative_titles?.titles) {
                 for (const alias of enriched.alternative_titles.titles) {
                   const aliasScore = this.fuzzyMatcher.calculateSimilarity(titleToTry, alias.title);
@@ -137,10 +204,7 @@ class MatchingService {
                   }
                 }
               }
-
-              // Bônus para ano
               if (score < this.threshold && score > 40 && !yearAttempt) score += 20;
-
               if (score > bestScore) {
                 bestScore = score;
                 bestEnriched = enriched;
@@ -158,24 +222,18 @@ class MatchingService {
       if (bestScore >= 95) break;
     }
 
-    // FASE 3: DECISÃO FINAL
     if (bestEnriched && bestScore >= this.threshold) {
-      const aliasSuffix = matchViaAlias ? ` (Match encontrado via Alias: ${aliasUsed})` : '';
-      logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (confiança: ${bestScore}%)${aliasSuffix}`);
-
+      const aliasSuffix = matchViaAlias ? ` (Match via Alias: ${aliasUsed})` : '';
+      logger.info(`✓ Enriquecido via ${finalSource}: "${usedTitle}" (${bestScore}%)${aliasSuffix}`);
       this.cacheService.set(usedTitle, yearFromTitle, bestEnriched);
       this._writeToAudit(channelName, originalTitle, usedTitle, bestScore, bestEnriched.title, finalSource, aliasSuffix);
-
       const enrichedProg = this._applyEnrichment(programme, bestEnriched, activePlaceholder);
       enrichedProg._enrichmentSource = finalSource;
       enrichedProg._wasEnriched = true;
       return enrichedProg;
     }
 
-    // LOGS DE FALHA... (Mantidos como no original)
-    const statusMsg = titlesToSkipApi.size > 0 ? " (Cache Negativo)" : "";
-    logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"${statusMsg}`);
-
+    logger.warn(`✗ Nenhuma API retornou dados com confiança >= ${this.threshold}% para: "${cleanTitle}"`);
     if (bestScore > 0) {
       try { if (cleanTitle) this.cacheService.set(cleanTitle, yearFromTitle, { notFound: true }); } catch (e) { }
       this._writeToAudit(channelName, originalTitle, usedTitle !== '-' ? usedTitle : cleanTitle, bestScore, bestEnriched ? bestEnriched.title : "REJEITADO", finalSource);
@@ -193,24 +251,12 @@ class MatchingService {
   _writeToAudit(channel, original, search, confidence, resultTitle, source, aliasSuffix = '') {
     const numericScore = (typeof confidence === 'string' ? parseFloat(confidence) : confidence);
     const isSuccess = numericScore >= this.threshold || numericScore === 100;
-
-    let status = '❌ Não Encontrado';
-    if (isSuccess) {
-      // Se houver um aliasSuffix (ou seja, foi achado via Alias), mudamos o status
-      status = aliasSuffix ? '✅ Correspondência Por Alias' : '✅ Correspondência Encontrada';
-    } else if (numericScore > 0) {
-      status = '⚠️ Baixa Confiança - Rejeitado';
-    }
-
+    let status = isSuccess ? (aliasSuffix ? '✅ Correspondência Por Alias' : '✅ Correspondência Encontrada') : (numericScore > 0 ? '⚠️ Baixa Confiança - Rejeitado' : '❌ Não Encontrado');
     const safeOriginal = original ? original.replace(/;/g, ',') : '';
     const safeSearch = search ? search.replace(/;/g, ',') : '';
     const safeResult = resultTitle ? resultTitle.replace(/;/g, ',') : '-';
-
-    // O finalResultDisplay continua mostrando qual foi o nome usado
     const finalResultDisplay = aliasSuffix ? `${safeResult}${aliasSuffix}` : safeResult;
-
     const line = `"${channel}";"${safeOriginal}";"${safeSearch}";${status};${confidence}%;"${finalResultDisplay}";${source}\n`;
-
     try {
       fs.appendFileSync(this.auditFilePath, line, 'utf-8');
     } catch (e) {
@@ -225,6 +271,12 @@ class MatchingService {
     const prog = { ...programme };
     const lang = config.api.language || 'pt-BR';
     prog.icon = [{ $: { src: data.image || placeholder } }];
+
+
+    if (data.description && data.description.length > 10) {
+      prog.desc = [data.description];
+    }
+
     if (data.genres) prog.category = data.genres.map(g => ({ _: g, $: { lang: lang } }));
     if (data.year) prog.date = [data.year.toString()];
     if (data.rating) prog.rating = [{ value: [data.rating], $: { system: 'BR' } }];

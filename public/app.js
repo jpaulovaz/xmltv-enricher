@@ -555,7 +555,7 @@ async function loadAuditPreview() {
 
         // Se não houver dados (considerando que o array vem com o header)
         if (!data.audit || data.audit.length <= 1) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Nenhum dado encontrado para este filtro</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Nenhum dado encontrado para este filtro</td></tr>';
             return;
         }
 
@@ -581,8 +581,28 @@ async function loadAuditPreview() {
                 <td>${cells[4] || '-'}</td>
                 <td>${cells[5] || '-'}</td>
                 <td>${cells[6] || '-'}</td>
+                <td style="text-align:center;">
+                    <button class="btn btn-small btn-fix-audit" style="background:#007bff; color:white; padding:4px 8px; border:none; border-radius:3px; cursor:pointer;" data-title="${encodeURIComponent(cells[1] || '')}" title="Adicionar override manualmente">🔧</button>
+                </td>
             </tr>`;
         }).join('');
+
+        // Adicionar eventos aos botões de correção
+        document.querySelectorAll('.btn-fix-audit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const title = decodeURIComponent(e.target.getAttribute('data-title'));
+                if (title && title !== '-') {
+                    // Chamar a função openModal do overrides.js
+                    const modalTitleInput = document.getElementById('modalTitle');
+                    const overrideModal = document.getElementById('overrideModal');
+                    if (modalTitleInput && overrideModal) {
+                        modalTitleInput.value = title;
+                        document.getElementById('modalTmdbId').value = '';
+                        overrideModal.style.display = 'flex';
+                    }
+                }
+            });
+        });
 
     } catch (error) {
         console.error('Erro ao carregar prévia da auditoria:', error);

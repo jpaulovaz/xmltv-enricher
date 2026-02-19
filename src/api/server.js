@@ -6,15 +6,17 @@ const logger = require('../utils/logger');
 const routes = require('./routes');
 
 class APIServer {
-  constructor(config, enricher, scheduler) {
+  constructor(config, enricher, scheduler, manualOverrideService) {
     this.config = config;
     this.enricher = enricher;
     this.scheduler = scheduler;
+    this.manualOverrideService = manualOverrideService;
     this.app = express();
     this.server = http.createServer(this.app);
     this.io = new Server(this.server);
     this.port = process.env.API_PORT || 3000;
-    
+
+
     // Estado global
     this.state = {
       running: false,
@@ -31,7 +33,7 @@ class APIServer {
   setupMiddleware() {
     this.app.use(express.json());
     this.app.use(express.static(path.join(__dirname, '../../public')));
-    
+
     // CORS
     this.app.use((req, res, next) => {
       res.header('Access-Control-Allow-Origin', '*');
@@ -48,7 +50,7 @@ class APIServer {
   setupWebSocket() {
     this.io.on('connection', (socket) => {
       logger.info('Cliente conectado ao WebSocket');
-      
+
       // Enviar estado atual
       socket.emit('state', this.state);
 
