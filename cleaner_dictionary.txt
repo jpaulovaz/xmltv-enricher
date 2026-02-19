@@ -1,69 +1,74 @@
-# Dicionário de Prefixos para Limpeza de Títulos
-# ORDEM IMPORTANTE: Do mais longo para o mais curto para evitar cortes parciais.
-
-# --- Prefixos Longos e Específicos (Prioridade Alta) ---
+# ============================================
+# Dicionário de Limpeza de Títulos
+# ============================================
+# Adicione prefixos que devem ser removidos dos títulos
+# Um termo por linha, sem dois-pontos no final
+# Linhas que começam com # são ignoradas
+# ============================================
 Cine Clube Arte 1 Clássicos
 Campeões de Bilheteria
+Festival de Sucessos
 Arte 1 Em Movimento
 Sessão Superestreia
-Festival de Sucessos
-Cinema Especial
 Temperatura Máxima
 Cine Clube Arte 1
-Sessão de Gala
+Melhores Momentos
+Tela de Sucessos
+Arte 1 Apresenta
+Cine Espetacular
+Sessão Nostalgia
+Cinema Especial
 Sessão da Tarde
 Sessão Aventura
 Sessão Especial
-Tela de Sucessos
-Arte 1 Apresenta
-Domingo Maior
-Cinema em Casa
-Cine Espetacular
 Curta no Almoço
-Sessão Pipoca
+Arte 1 em Série
+Sessão de Gala
+Cinema em Casa
 Sessão Comédia
-Melhores Momentos
-Supercine
-Tela Quente
-Tela Máxima
+Reapresentação
+Domingo Maior
+Sessão Pipoca
 Cine Aventura
+Curtas Do Off
+Curtas do Off
+Domingo Legal
+Curta Na Tela
 Cine Família
 Curta Arte 1
 Curta In Box
 Curta in Box
-Curtas Do Off
-Curtas do Off
-Domingo Legal
+Abre a Coxia
+Tela Quente
+Tela Máxima
+Programação
 Super Tela
+Bastidores
+Supercine
+Cinemasso
+Making Of
 Pré-Jogo
 Pós-Jogo
 Top Cine
-Corujão
 Especial
-Estreia
-
-# --- Prefixos Médios e Variedades ---
-Cinemasso
-Bastidores
-Making Of
 Compacto
-Ao Vivo
-Arte 1
-Visão
-Missa
-Terço
-
-# --- Prefixos Curtos e Genéricos (Perigo - Deixar por último) ---
-Programação
-Reapresentação
 Maratona
 Episódio
 Episodio
-Novela
+Corujão
+Estreia
+Ao Vivo
 Desenho
+Arte 1
+Novela
+Visão
+Missa
+Terço
 Série
 Serie
 Filme
 Vivo
 Cine
+VT -
 Doc
+VT
