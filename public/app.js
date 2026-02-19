@@ -54,6 +54,12 @@ tabButtons.forEach(button => {
         if (tabName === 'settings') {
             loadConfig();
         }
+        
+        // Load categories when opening placeholders tab
+        if (tabName === 'placeholders') {
+            loadCategories();
+            analyzeChannels();
+        }
     });
 });
 
@@ -737,6 +743,216 @@ async function deleteTerm(encodedTerm) {
 document.querySelector('[data-tab="tools"]')?.addEventListener('click', () => {
     loadAuditPreview();
     loadDictionary();
+});
+
+// ===== PLACEHOLDERS =====
+async function loadCategories() {
+  try {
+    const response = await fetch('/api/placeholders/categories');
+    const result = await response.json();
+    
+    if (result.success) {
+      const categories = result.data;
+      const tbody = document.getElementById('categoriesTableBody');
+      
+      if (categories.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nenhuma categoria criada</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = categories.map(cat => `
+        <tr>
+          <td>${cat.name}</td>
+          <td><img src="${cat.url}" style="max-width: 50px; max-height: 50px; border-radius: 4px;"></td>
+          <td>
+            <button class="btn btn-small btn-danger" onclick="deleteCategory('${cat.name}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (error) {
+    console.error('Erro ao carregar categorias:', error);
+  }
+}
+
+async function addCategory() {
+  const name = document.getElementById('categoryName').value.trim();
+  const url = document.getElementById('placeholderUrl').value.trim();
+  
+  if (!name || !url) {
+    alert('Preencha todos os campos');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/placeholders/category', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoryName: name, placeholderUrl: url })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      document.getElementById('categoryName').value = '';
+      document.getElementById('placeholderUrl').value = '';
+      loadCategories();
+      alert('Categoria adicionada com sucesso!');
+    } else {
+      alert('Erro: ' + result.message);
+    }
+  } catch (error) {
+    console.error('Erro ao adicionar categoria:', error);
+    alert('Erro ao adicionar categoria');
+  }
+}
+
+async function deleteCategory(name) {
+  if (!confirm('Tem certeza que deseja deletar esta categoria?')) return;
+  
+  try {
+    const response = await fetch(`/api/placeholders/category/${encodeURIComponent(name)}`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      loadCategories();
+      alert('Categoria deletada com sucesso!');
+    } else {
+      alert('Erro: ' + result.message);
+    }
+  } catch (error) {
+    console.error('Erro ao deletar categoria:', error);
+    alert('Erro ao deletar categoria');
+  }
+}
+
+async function analyzeChannels() {
+  try {
+    // CORRIGIDO: Carregar categorias ANTES de criar a tabela
+    const categoriesResponse = await fetch('/api/placeholders/categories');
+    const categoriesResult = await categoriesResponse.json();
+    const categories = categoriesResult.success ? categoriesResult.data : [];
+    
+    const response = await fetch('/api/placeholders/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channels: [] })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      const analysis = result.data;
+      
+      document.getElementById('totalChannels').textContent = analysis.total;
+      document.getElementById('configuredChannels').textContent = analysis.configured;
+      document.getElementById('missingChannels').textContent = analysis.missing;
+      
+      const missingBody = document.getElementById('missingChannelsTableBody');
+      if (analysis.missingList.length === 0) {
+        missingBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Todos os canais configurados!</td></tr>';
+      } else {
+        // Criar a tabela COM as categorias ja carregadas
+        missingBody.innerHTML = analysis.missingList.map(ch => `
+          <tr>
+            <td>${ch}</td>
+            <td>
+              <select id="cat_${ch}" class="form-control">
+                <option value="">Selecionar...</option>
+                ${categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-small btn-primary" onclick="linkChannel('${ch}')">🔗</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+      
+      const configuredBody = document.getElementById('configuredChannelsTableBody');
+      if (analysis.configuredList.length === 0) {
+        configuredBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nenhum canal configurado</td></tr>';
+      } else {
+        configuredBody.innerHTML = analysis.configuredList.map(item => `
+          <tr>
+            <td>${item.channel}</td>
+            <td>${item.category}</td>
+            <td>
+              <button class="btn btn-small btn-danger" onclick="unlinkChannel('${item.channel}')">🗑️</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao analisar canais:', error);
+    alert('Erro ao analisar canais');
+  }
+}
+
+async function linkChannel(channelName) {
+  const categorySelect = document.getElementById(`cat_${channelName}`);
+  const category = categorySelect.value;
+  
+  if (!category) {
+    alert('Selecione uma categoria');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/placeholders/link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelName, categoryName: category })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      analyzeChannels();
+      alert('Canal vinculado com sucesso!');
+    } else {
+      alert('Erro: ' + result.message);
+    }
+  } catch (error) {
+    console.error('Erro ao vincular canal:', error);
+    alert('Erro ao vincular canal');
+  }
+}
+
+async function unlinkChannel(channelName) {
+  if (!confirm('Tem certeza que deseja desvincular este canal?')) return;
+  
+  try {
+    const response = await fetch(`/api/placeholders/link/${encodeURIComponent(channelName)}`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      analyzeChannels();
+      alert('Canal desvinculado com sucesso!');
+    } else {
+      alert('Erro: ' + result.message);
+    }
+  } catch (error) {
+    console.error('Erro ao desvincular canal:', error);
+    alert('Erro ao desvincular canal');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btnAddCategory = document.getElementById('btnAddCategory');
+  const btnAnalyzeChannels = document.getElementById('btnAnalyzeChannels');
+  
+  if (btnAddCategory) {
+    btnAddCategory.addEventListener('click', addCategory);
+  }
+  
+  if (btnAnalyzeChannels) {
+    btnAnalyzeChannels.addEventListener('click', analyzeChannels);
+  }
+  
+  loadCategories();
 });
 
 // Initialize

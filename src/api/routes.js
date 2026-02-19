@@ -495,4 +495,84 @@ module.exports = (app, apiServer) => {
 
 
 
+  // ===== PLACEHOLDERS =====
+  app.get('/api/placeholders/categories', (req, res) => {
+    try {
+      const categories = apiServer.placeholdersService.getCategories();
+      res.json({ success: true, data: categories });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.get('/api/placeholders/channels', (req, res) => {
+    try {
+      const channels = apiServer.placeholdersService.getChannels();
+      res.json({ success: true, data: channels });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post('/api/placeholders/category', (req, res) => {
+    try {
+      const { categoryName, placeholderUrl } = req.body;
+      const result = apiServer.placeholdersService.addCategory(categoryName, placeholderUrl);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.put('/api/placeholders/category/:name', (req, res) => {
+    try {
+      const { placeholderUrl } = req.body;
+      const result = apiServer.placeholdersService.updateCategory(req.params.name, placeholderUrl);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.delete('/api/placeholders/category/:name', (req, res) => {
+    try {
+      const result = apiServer.placeholdersService.deleteCategory(req.params.name);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post('/api/placeholders/link', (req, res) => {
+    try {
+      const { channelName, categoryName } = req.body;
+      const result = apiServer.placeholdersService.linkChannelToCategory(channelName, categoryName);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.delete('/api/placeholders/link/:channel', (req, res) => {
+    try {
+      const result = apiServer.placeholdersService.unlinkChannel(req.params.channel);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post('/api/placeholders/analyze', (req, res) => {
+    try {
+      const { channels } = req.body;
+      if (!Array.isArray(channels)) {
+        return res.status(400).json({ success: false, message: 'Channels deve ser um array' });
+      }
+      const analysis = apiServer.placeholdersService.analyzeChannels(channels);
+      res.json({ success: true, data: analysis });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
 };

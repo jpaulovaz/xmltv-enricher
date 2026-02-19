@@ -27,6 +27,7 @@
             <button class="tab-button" data-tab="tools" data-testid="tab-tools">🛠️ Ferramentas</button>
             <button class="tab-button" data-tab="manual-override" data-testid="tab-manual-override">✍️ Revisão
                 Manual</button>
+            <button class="tab-button" data-tab="placeholders" data-testid="tab-placeholders">🎨 Placeholders</button>
         </div>
 
         <!-- Tab Content: Dashboard -->
@@ -567,6 +568,100 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Placeholders -->
+        <div id="placeholders" class="tab-content">
+            <div class="grid">
+                <!-- Gerenciar Categorias -->
+                <div class="card">
+                    <h2>📂 Gerenciar Categorias</h2>
+                    <div class="form-group">
+                        <label>Nome da Categoria:</label>
+                        <input type="text" id="categoryName" placeholder="Ex: movies, series, kids" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>URL do Placeholder:</label>
+                        <input type="text" id="placeholderUrl" placeholder="https://..." class="form-control">
+                    </div>
+                    <button id="btnAddCategory" class="btn btn-primary">➕ Adicionar Categoria</button>
+                    
+                    <h3 style="margin-top: 25px;">Categorias Existentes</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Preview</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoriesTableBody">
+                                <tr><td colspan="3" style="text-align:center;">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Análise de Canais -->
+            <div class="card" style="margin-top: 20px;">
+                <h2>📊 Análise de Canais</h2>
+                <button id="btnAnalyzeChannels" class="btn btn-primary">🔄 Atualizar Análise</button>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px;">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalChannels">-</div>
+                        <div class="stat-label">Total de Canais</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="configuredChannels">-</div>
+                        <div class="stat-label">Configurados</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="missingChannels">-</div>
+                        <div class="stat-label">Faltando</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canais Faltando -->
+            <div class="card" style="margin-top: 20px;">
+                <h2>🔴 Canais Faltando Configurar</h2>
+                <div style="overflow-x: auto;">
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Canal</th>
+                                <th>Categoria</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="missingChannelsTableBody">
+                            <tr><td colspan="3" style="text-align:center;">Clique em "Atualizar Análise" para carregar</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Canais Configurados -->
+            <div class="card" style="margin-top: 20px;">
+                <h2>🟢 Canais Já Configurados</h2>
+                <div style="overflow-x: auto;">
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Canal</th>
+                                <th>Categoria</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="configuredChannelsTableBody">
+                            <tr><td colspan="3" style="text-align:center;">Clique em "Atualizar Análise" para carregar</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

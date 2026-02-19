@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const logger = require('../utils/logger');
 const routes = require('./routes');
+const PlaceholdersService = require('../services/placeholdersService');
 
 class APIServer {
   constructor(config, enricher, scheduler, manualOverrideService) {
@@ -11,6 +12,7 @@ class APIServer {
     this.enricher = enricher;
     this.scheduler = scheduler;
     this.manualOverrideService = manualOverrideService;
+    this.placeholdersService = new PlaceholdersService();
     this.app = express();
     this.server = http.createServer(this.app);
     this.io = new Server(this.server);
