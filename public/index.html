@@ -170,7 +170,12 @@
                         </div>
                         <div class="form-group">
                             <label for="TVDB_API_KEY">TVDb API Key:</label>
-                            <input type="text" id="TVDB_API_KEY" name="TVDB_API_KEY" data-testid="input-tvdb-key">
+                            <div class="input-with-button">
+                                <input type="text" id="TVDB_API_KEY" name="TVDB_API_KEY" data-testid="input-tvdb-key">
+                                <button type="button" class="btn btn-test-small" id="btnTestTvdb"
+                                    data-testid="btn-test-tvdb">Testar</button>
+                            </div>
+                            <span id="tvdbTestResult" class="test-result"></span>
                         </div>
                         <div class="form-group">
                             <label for="TVDB_PIN">TVDb PIN:</label>

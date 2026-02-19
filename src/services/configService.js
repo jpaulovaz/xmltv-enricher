@@ -184,10 +184,15 @@ class ConfigService {
       };
 
       const response = await axios.get(testUrl, config);
+      const mediaContainer = response.data?.MediaContainer || {};
+      const serverName = mediaContainer.friendlyName || 'Desconhecido';
+      const version = mediaContainer.version || 'Desconhecida';
+      
       return { 
         success: true, 
         message: 'Conexão com Plex bem sucedida!',
-        serverName: response.data?.MediaContainer?.friendlyName || 'Desconhecido'
+        serverName: serverName,
+        version: version
       };
     } catch (error) {
       let errorMsg = 'Falha ao conectar com Plex';
@@ -234,7 +239,35 @@ class ConfigService {
     }
   }
 
+
   /**
+   * Testa API key do TVDb
+   */
+  async testTvdbApiKey(apiKey, pin = '') {
+    const axios = require('axios');
+    try {
+      const payload = { apikey: apiKey };
+      if (pin) {
+        payload.pin = pin;
+      }
+      
+      const testUrl = 'https://api4.thetvdb.com/v4/login';
+      const response = await axios.post(testUrl, payload, { timeout: 10000 });
+      
+      if (response.data?.data?.token) {
+        return { success: true, message: 'API Key do TVDb válida!' };
+      } else {
+        return { success: false, message: 'Resposta inválida do TVDb' };
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        return { success: false, message: 'API Key ou PIN inválido' };
+      }
+      return { success: false, message: 'Erro ao validar API Key' };
+    }
+  }
+
+    /**
    * Validar configurações
    */
   _validateConfig(config) {

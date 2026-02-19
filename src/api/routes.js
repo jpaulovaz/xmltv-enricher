@@ -379,6 +379,13 @@ module.exports = (app, apiServer) => {
     const result = await configService.testOmdbApiKey(apiKey);
     res.json(result);
   });
+
+  // Test TVDb API Key
+  app.post('/api/test/tvdb', async (req, res) => {
+    const { apiKey, pin } = req.body;
+    const result = await configService.testTvdbApiKey(apiKey, pin || '');
+    res.json(result);
+  });
   // ==================================================================
   // 📍 FASE 3: ROTAS DE MANUAL OVERRIDE & AUDITORIA DE FALHAS
   // ==================================================================

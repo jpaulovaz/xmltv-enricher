@@ -112,7 +112,7 @@ class MatchingService {
 
       if (override && override.tmdbId) {
         logger.info(`⚡ Override Manual identificado: "${originalTitle}" (chave: "${overrideKey}") -> TMDb ID ${override.tmdbId}`);
-        const tmdbApi = this.apis.find(api => api.constructor.name === 'TmdbAPI');
+        const tmdbApi = this.apis.find(api => api.constructor.name === 'TMDbAPI');
         if (tmdbApi && typeof tmdbApi.enrichById === 'function') {
           try {
             const enriched = await tmdbApi.enrichById(override.tmdbId, override.type);

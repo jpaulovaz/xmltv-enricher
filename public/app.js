@@ -25,6 +25,7 @@ const btnTestTvheadend = document.getElementById('btnTestTvheadend');
 const btnTestPlex = document.getElementById('btnTestPlex');
 const btnTestTmdb = document.getElementById('btnTestTmdb');
 const btnTestOmdb = document.getElementById('btnTestOmdb');
+const btnTestTvdb = document.getElementById('btnTestTvdb');
 
 // Tabs
 const tabButtons = document.querySelectorAll('.tab-button');
@@ -297,8 +298,10 @@ btnTestPlex.addEventListener('click', async () => {
             body: JSON.stringify({ url, token })
         });
         const result = await response.json();
-        showTestResult('plexTestResult', result.success,
-            result.success ? `✅ ${result.message} (${result.serverName})` : `❌ ${result.message}`);
+        const displayText = result.success 
+            ? `✅ ${result.message} - ${result.serverName} (v${result.version})`
+            : `❌ ${result.message}`;
+        showTestResult('plexTestResult', result.success, displayText);
     } catch (error) {
         showTestResult('plexTestResult', false, '❌ Erro ao testar conexão');
     } finally {
@@ -359,6 +362,34 @@ btnTestOmdb.addEventListener('click', async () => {
         showTestResult('omdbTestResult', false, '❌ Erro ao testar API');
     } finally {
         btnTestOmdb.disabled = false;
+    }
+});
+// Test TVDb
+btnTestTvdb.addEventListener('click', async () => {
+    const apiKey = document.getElementById('TVDB_API_KEY').value;
+    const pin = document.getElementById('TVDB_PIN').value;
+
+    if (!apiKey) {
+        showTestResult('tvdbTestResult', false, '❌ API Key não informada');
+        return;
+    }
+
+    showTestLoading('tvdbTestResult');
+    btnTestTvdb.disabled = true;
+
+    try {
+        const response = await fetch('/api/test/tvdb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey, pin })
+        });
+        const result = await response.json();
+        showTestResult('tvdbTestResult', result.success,
+            result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
+    } catch (error) {
+        showTestResult('tvdbTestResult', false, '❌ Erro ao testar conexão');
+    } finally {
+        btnTestTvdb.disabled = false;
     }
 });
 
