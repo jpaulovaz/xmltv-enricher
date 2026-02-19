@@ -21,11 +21,35 @@ try {
 
 class MatchingService {
   constructor(...args) {
+    // CORRECAO: Verificar o TIPO do ultimo argumento, nao a quantidade
+    // Esperado: [...apis, config, cacheService, manualOverrideService]
     const lastArg = args[args.length - 1];
-    this.manualOverrideService = (args.length > 3) ? args[args.length - 1] : null;
-    this.cacheService = this.manualOverrideService ? args[args.length - 2] : args[args.length - 1];
-    const configArg = this.manualOverrideService ? args[args.length - 3] : args[args.length - 2];
-    const apisEndIndex = this.manualOverrideService ? -3 : -2;
+    
+    // Verificar se o ultimo argumento eh ManualOverrideService
+    // (tem metodo 'get' e 'add', nao eh null)
+    const isManualOverrideService = lastArg !== null && typeof lastArg === 'object' && 
+                                    (typeof lastArg.get === 'function' || typeof lastArg.add === 'function');
+    
+    this.manualOverrideService = isManualOverrideService ? lastArg : null;
+    
+    // SEMPRE ha manualOverrideService (pode ser null), entao:
+    // [...apis, config, cacheService, manualOverrideService]
+    // config = args[-3], cacheService = args[-2], manualOverrideService = args[-1]
+    const configIndex = args.length - 3;
+    const cacheServiceIndex = args.length - 2;
+    
+    this.cacheService = args[cacheServiceIndex];
+    const configArg = args[configIndex];
+    
+    // Validar que configArg foi extraido corretamente
+    if (!configArg || !configArg.matching) {
+      throw new Error('MatchingService: config nao foi passado corretamente. Verifique a ordem dos argumentos no constructor.');
+    }
+    
+    // APIs sao todos os argumentos antes de config
+    // [...apis, config, cacheService, manualOverrideService]
+    // APIs terminam em args.length - 3
+    const apisEndIndex = -3;
     this.apis = args.slice(0, apisEndIndex).filter(api => api !== null);
 
     this.fuzzyMatcher = new FuzzyMatcher(
@@ -43,11 +67,7 @@ class MatchingService {
 
     // Sobrescreve o arquivo com o cabeçalho (limpando o conteúdo anterior)
     fs.writeFileSync(this.auditFilePath, "\ufeffCanal;Título Original;Busca;Status;Confiança;Resultado API;Fonte\n", 'utf-8');
-    // DEBUG: Log das APIs carregadas
-    logger.info(`MatchingService inicializado com ${this.apis.length} API(s):`);
-    this.apis.forEach((api, idx) => {
-      logger.info(`  [${idx + 1}] ${api.constructor.name}`);
-    });
+    logger.info(`MatchingService inicializado.`);
   }
 
   _getDynamicPlaceholder(channelName, defaultPlaceholder) {
@@ -92,10 +112,7 @@ class MatchingService {
 
       if (override && override.tmdbId) {
         logger.info(`⚡ Override Manual identificado: "${originalTitle}" (chave: "${overrideKey}") -> TMDb ID ${override.tmdbId}`);
-        logger.debug(`DEBUG: Procurando TMDbAPI entre ${this.apis.length} APIs...`);
-        const tmdbApi = this.apis.find(api => api.constructor.name === 'TMDbAPI');
-        logger.debug(`DEBUG: TMDbAPI encontrada? ${tmdbApi ? 'SIM' : 'NAO'}`);
-        logger.debug(`DEBUG: Verificando se TMDbAPI tem enrichById: ${tmdbApi && typeof tmdbApi.enrichById === 'function' ? 'SIM' : 'NAO'}`);
+        const tmdbApi = this.apis.find(api => api.constructor.name === 'TmdbAPI');
         if (tmdbApi && typeof tmdbApi.enrichById === 'function') {
           try {
             const enriched = await tmdbApi.enrichById(override.tmdbId, override.type);
@@ -109,28 +126,13 @@ class MatchingService {
             } else {
               logger.warn(`⚠️ enrichById retornou dados inválidos para TMDb ID ${override.tmdbId}`);
               this._writeToAudit(channelName, originalTitle, `ID: ${override.tmdbId}`, 0, 'OVERRIDE INVÁLIDO', 'Manual Override');
-              // Retorna placeholder em vez de continuar buscando
-              const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
-              placeholderProg._enrichmentSource = 'placeholder';
-              placeholderProg._wasEnriched = false;
-              return placeholderProg;
             }
           } catch (error) {
             logger.error(`❌ Erro ao buscar dados do override (ID ${override.tmdbId}): ${error.message}`);
             this._writeToAudit(channelName, originalTitle, `ID: ${override.tmdbId}`, 0, `ERRO: ${error.message}`, 'Manual Override');
-            // Retorna placeholder em vez de continuar buscando
-            const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
-            placeholderProg._enrichmentSource = 'placeholder';
-            placeholderProg._wasEnriched = false;
-            return placeholderProg;
           }
         } else {
           logger.warn(`⚠️ TMDb API não disponível para processar override`);
-          // Retorna placeholder em vez de continuar buscando
-          const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
-          placeholderProg._enrichmentSource = 'placeholder';
-          placeholderProg._wasEnriched = false;
-          return placeholderProg;
         }
       }
     } // <-- CHAVE FECHADA AQUI PARA NÃO PRENDER O RESTO DO CÓDIGO
