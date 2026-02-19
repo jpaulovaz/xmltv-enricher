@@ -753,22 +753,25 @@ async function loadCategories() {
     
     if (result.success) {
       const categories = result.data;
-      const tbody = document.getElementById('categoriesTableBody');
+      const grid = document.getElementById('categoriesGrid');
       
       if (categories.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nenhuma categoria criada</td></tr>';
+        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #999;">Nenhuma categoria criada</div>';
         return;
       }
       
-      tbody.innerHTML = categories.map(cat => `
-        <tr>
-          <td>${cat.name}</td>
-          <td><img src="${cat.url}" style="max-width: 50px; max-height: 50px; border-radius: 4px;"></td>
-          <td>
-            <button class="btn btn-small btn-danger" onclick="deleteCategory('${cat.name}')">🗑️</button>
-          </td>
-        </tr>
-      `).join('');
+      grid.innerHTML = categories.map(cat => {
+        const placeholderUrl = `https://via.placeholder.com/200x300?text=${encodeURIComponent(cat.name)}`;
+        return `
+        <div class="category-card">
+          <img src="${cat.url}" alt="${cat.name}" onerror="this.src='${placeholderUrl}'">
+          <h4>${cat.name}</h4>
+          <div class="category-actions">
+            <button class="btn-delete" onclick="deleteCategory('${cat.name}')">Deletar</button>
+          </div>
+        </div>
+      `;
+      }).join('');
     }
   } catch (error) {
     console.error('Erro ao carregar categorias:', error);

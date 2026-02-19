@@ -117,6 +117,18 @@
     "Universal TV HD": "series",
     "USA HD": "series",
     "Warner Channel HD": "series",
-    "Woohoo HD": "series"
+    "Woohoo HD": "series",
+    "Band HD": "generic",
+    "CNT HD": "generic",
+    "Globo HD RJ": "generic",
+    "HBO MUNDI HD": "movies",
+    "HBO POP HD": "movies",
+    "HBO XTREME HD": "movies",
+    "RECORDTV HD": "generic",
+    "Rede TV HD": "generic",
+    "SBT HD": "generic",
+    "sportv 2 HD": "sports",
+    "sportv 3 HD": "sports",
+    "sportv HD": "sports"
   }
 }
