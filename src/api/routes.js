@@ -575,14 +575,13 @@ module.exports = (app, apiServer) => {
     }
   });
 
-};
   app.get('/xmltv', (req, res) => {
     const xmltvPath = path.join(process.cwd(), 'output', 'xmltv.xml');
-    
+
     if (!fs.existsSync(xmltvPath)) {
       return res.status(404).json({ error: 'Arquivo xmltv.xml nao encontrado. Execute o enricher primeiro.' });
     }
-    
+
     try {
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="xmltv.xml"');

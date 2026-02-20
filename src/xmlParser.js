@@ -17,7 +17,7 @@ const fetchXml = async (tvheadendConfig) => {
     const response = await axios.get(xmlUrl, {
       auth,
       responseType: 'text', // Garante que recebemos texto/xml
-      timeout: 30000 // 30 segundos de timeout para XMLs grandes
+      timeout: 120000 // 120 segundos de timeout para XMLs grandes
     });
 
     if (response.status !== 200) {
