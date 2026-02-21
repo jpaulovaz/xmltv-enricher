@@ -146,7 +146,7 @@ module.exports = (app, apiServer) => {
 
   // Get dictionary
   app.get('/api/dictionary', (req, res) => {
-    const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+    const dictPath = path.join(process.cwd(), 'src', 'config', 'cleaner_dictionary.txt');
 
     if (fs.existsSync(dictPath)) {
       const content = fs.readFileSync(dictPath, 'utf-8');
@@ -171,7 +171,7 @@ module.exports = (app, apiServer) => {
   // Save dictionary (COM ORDENAÇÃO AUTOMÁTICA)
   app.post('/api/dictionary', (req, res) => {
     const { terms } = req.body;
-    const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+    const dictPath = path.join(process.cwd(), 'src', 'config', 'cleaner_dictionary.txt');
 
     try {
       const header = [
@@ -220,7 +220,7 @@ module.exports = (app, apiServer) => {
   // Add single term to dictionary (COM REORDENAÇÃO)
   app.post('/api/dictionary/add', (req, res) => {
     const { term } = req.body;
-    const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+    const dictPath = path.join(process.cwd(), 'src', 'config', 'cleaner_dictionary.txt');
 
     if (!term || term.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'Termo inválido' });
@@ -281,7 +281,7 @@ module.exports = (app, apiServer) => {
   // Delete term from dictionary
   app.delete('/api/dictionary/:term', (req, res) => {
     const termToDelete = decodeURIComponent(req.params.term);
-    const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+    const dictPath = path.join(process.cwd(), 'src', 'config', 'cleaner_dictionary.txt');
 
     try {
       if (!fs.existsSync(dictPath)) {

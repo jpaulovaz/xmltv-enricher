@@ -27,7 +27,7 @@ function buildDictionaryRegex(content) {
 
 // Carregamento Inicial
 try {
-  const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+  const dictPath = path.join(process.cwd(), 'src', 'config', 'cleaner_dictionary.txt');
   if (fs.existsSync(dictPath)) {
     const content = fs.readFileSync(dictPath, 'utf-8');
     dictionaryRegex = buildDictionaryRegex(content);
@@ -40,7 +40,7 @@ try {
 // Função para recarregar o dicionário (Usada pela API/Web)
 function reloadDictionary() {
   try {
-    const dictPath = path.join(process.cwd(), 'cleaner_dictionary.txt');
+    const dictPath = path.join(process.cwd(), 'src', 'config', 'cleaner_dictionary.txt');
     if (fs.existsSync(dictPath)) {
       const content = fs.readFileSync(dictPath, 'utf-8');
       dictionaryRegex = buildDictionaryRegex(content);
