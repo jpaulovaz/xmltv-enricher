@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Instalar dependências do sistema
 RUN apk add --no-cache python3 make g++ sqlite
