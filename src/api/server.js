@@ -35,6 +35,7 @@ class APIServer {
 
   setupMiddleware() {
     // <-- 2. TRUST PROXY ADICIONADO PARA FUNCIONAR COM HTTPS/CLOUDFLARE
+    this.app.set('trust proxy', true);
 
     this.app.use(express.json());
 
