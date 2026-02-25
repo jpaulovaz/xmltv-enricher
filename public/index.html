@@ -11,11 +11,22 @@
 <body>
     <div class="container">
         <header>
-            <h1>📺 JOHNFLIX XMLTV Enricher</h1>
-            <div class="header-controls">
-                <div class="status-badge" id="statusBadge">
-                    <span class="status-dot"></span>
-                    <span id="statusText">Carregando...</span>
+            <div class="header-content"
+                style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div>
+                        <h1 style="margin: 0;">🎬 JohnFlix XMLTV Enricher</h1>
+                        <p style="margin: 5px 0 0 0;">Dashboard de Monitoramento e Controle</p>
+                    </div>
+                    <span id="statusBadge" class="status-badge status-idle"
+                        style="padding: 6px 12px; border-radius: 15px; font-size: 0.85em; background-color: #e9ecef; color: #495057; display: inline-block;">
+                        <span id="statusText">✅ Ocioso</span>
+                    </span>
+                </div>
+                <div>
+                    <a href="/logout" class="btn btn-secondary btn-small"
+                        style="background-color: #6c757d; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px;">Sair
+                        / Logout</a>
                 </div>
             </div>
         </header>
