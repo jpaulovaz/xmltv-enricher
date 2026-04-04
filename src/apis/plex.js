@@ -161,7 +161,8 @@ class PlexAPI {
         image: imageUrl,
         genres,
         year: releaseYear,
-        rating: contentRating,
+        contentRating: contentRating,
+        score: details.rating || null,
         type
       };
     } catch (error) {

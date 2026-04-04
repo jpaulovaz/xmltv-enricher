@@ -6,7 +6,6 @@ const StatsService = require('./services/statsService');
 const NotificationService = require('./services/notificationService');
 const BackupService = require('./services/backupService');
 
-// Importar APIs
 const TMDbAPI = require('./apis/tmdb');
 const TVDbAPI = require('./apis/tvdb');
 const OMDbAPI = require('./apis/omdb');
@@ -63,7 +62,6 @@ class Enricher {
       logger.info(`Iniciando processo de enriquecimento${dryRun ? ' (DRY RUN)' : ''}...`);
 
       if (apiServer) apiServer.emitLog('info', 'Inicializando conexões de API...');
-      logger.info('Inicializando conexões de API...');
       for (const api of this.matchingService.apis) {
         if (api.initialize) {
           await api.initialize();
@@ -98,8 +96,7 @@ class Enricher {
         logger.info(`Mapeados ${Object.keys(channelMap).length} canais.`);
       }
 
-      logger.info(`Total de programas a enriquecer: ${programmes.length}`);
-      statsService.stats.totalPrograms = programmes.length;
+      logger.info(`Total de programas a processar: ${programmes.length}`);
       if (apiServer) apiServer.emitLog('info', `Processando ${programmes.length} programas...`);
 
       const enrichedProgrammes = [];
@@ -112,27 +109,20 @@ class Enricher {
         const batchPromises = batch.map(async (prog) => {
           const channelId = prog.$ ? prog.$.channel : null;
           const channelName = channelMap[channelId] || channelId || 'Desconhecido';
-          const progTitle = prog.title && prog.title[0] ? (typeof prog.title[0] === 'object' ? prog.title[0]._ : prog.title[0]) : 'Sem título';
 
-          const enriched = await this.matchingService.enrichProgram(prog, this.config.output.placeholderImage, channelName);
+          const enriched = await this.matchingService.enrichProgram(
+            prog,
+            this.config.output.placeholderImage,
+            channelName
+          );
 
-          if (enriched._wasEnriched) {
-            statsService.incrementEnriched();
+          statsService.registerProgrammeResult(enriched);
 
-            const source = enriched._enrichmentSource;
-            if (source === 'cache') {
-              statsService.incrementCacheHits();
-            } else if (source && source !== 'placeholder') {
-              statsService.incrementApiCall(source);
-            }
-          } else {
-            statsService.incrementFailed();
-          }
-
-          // Limpeza das flags internas para o XML ficar limpo
           delete enriched._wasEnriched;
           delete enriched._enrichmentSource;
-          // Deletamos as novas propriedades de Alias também para não irem para o arquivo XML final
+          delete enriched._matchOutcome;
+          delete enriched._skipReason;
+          delete enriched._eligibleForMatching;
           delete enriched.matchViaAlias;
           delete enriched.aliasUsed;
 
@@ -153,12 +143,12 @@ class Enricher {
 
       const fs = require('fs');
       if (dryRun) {
-        logger.info('🧪 DRY RUN: XML não foi salvo (modo de teste)');
-        if (apiServer) apiServer.emitLog('info', '🧪 DRY RUN concluído - XML não salvo');
+        logger.info('DRY RUN: XML não foi salvo (modo de teste)');
+        if (apiServer) apiServer.emitLog('info', 'DRY RUN concluído - XML não salvo');
       } else {
         fs.writeFileSync(this.config.output.path, newXml);
         logger.info(`Arquivo XML salvo em: ${this.config.output.path}`);
-        if (apiServer) apiServer.emitLog('info', `✅ XML salvo: ${this.config.output.path}`);
+        if (apiServer) apiServer.emitLog('info', `XML salvo: ${this.config.output.path}`);
       }
 
       statsService.end();
@@ -171,7 +161,6 @@ class Enricher {
       if (apiServer && finalStats) {
         apiServer.updateState({ lastStats: finalStats });
       }
-
     } catch (error) {
       logger.error(`Erro durante execução: ${error.message}`);
       if (error.stack) logger.debug(error.stack);

@@ -1,33 +1,22 @@
 const logger = require('./logger');
 
-/**
- * Módulo de Fuzzy Matching para validação de confiança de matches
- * Suporta múltiplos algoritmos: levenshtein, jaro_winkler, cosine
- */
 class FuzzyMatcher {
   constructor(algorithm = 'jaro_winkler', threshold = 85) {
     this.algorithm = algorithm.toLowerCase();
     this.threshold = threshold;
 
-    // Validar algoritmo
     if (!['levenshtein', 'jaro_winkler', 'cosine'].includes(this.algorithm)) {
       logger.warn(`Algoritmo desconhecido: ${algorithm}. Usando jaro_winkler`);
       this.algorithm = 'jaro_winkler';
     }
   }
 
-  /**
-   * Calcular similaridade entre duas strings
-   * Retorna score entre 0 e 100
-   */
   calculateSimilarity(str1, str2) {
     if (!str1 || !str2) return 0;
 
-    // Normalizar strings
     const s1 = this._normalize(str1);
     const s2 = this._normalize(str2);
 
-    // Se forem iguais após normalização, retornar 100
     if (s1 === s2) return 100;
 
     let score = 0;
@@ -49,47 +38,102 @@ class FuzzyMatcher {
     return Math.round(score * 100);
   }
 
-  /**
-   * Verificar se o match atende ao threshold mínimo
-   */
-  isConfident(str1, str2) {
-    const similarity = this.calculateSimilarity(str1, str2);
-    return similarity >= this.threshold;
+  calculateTokenOverlap(str1, str2) {
+    const tokens1 = this._tokenize(str1);
+    const tokens2 = this._tokenize(str2);
+
+    if (tokens1.length === 0 || tokens2.length === 0) return 0;
+
+    const set1 = new Set(tokens1);
+    const set2 = new Set(tokens2);
+    let intersection = 0;
+
+    for (const token of set1) {
+      if (set2.has(token)) intersection++;
+    }
+
+    const denominator = Math.max(set1.size, set2.size) || 1;
+    return Math.round((intersection / denominator) * 100);
   }
 
-  /**
-   * Obter score de similaridade com detalhes
-   */
-  getDetailedScore(str1, str2) {
-    const similarity = this.calculateSimilarity(str1, str2);
-    const isConfident = similarity >= this.threshold;
+  calculateTokenCoverage(reference, candidate) {
+    const referenceTokens = this._tokenize(reference);
+    const candidateTokens = this._tokenize(candidate);
+
+    if (referenceTokens.length === 0 || candidateTokens.length === 0) return 0;
+
+    const referenceSet = new Set(referenceTokens);
+    const candidateSet = new Set(candidateTokens);
+    let covered = 0;
+
+    for (const token of referenceSet) {
+      if (candidateSet.has(token)) covered++;
+    }
+
+    return Math.round((covered / referenceSet.size) * 100);
+  }
+
+  getCompositeScore(reference, candidate) {
+    const similarity = this.calculateSimilarity(reference, candidate);
+    const tokenOverlap = this.calculateTokenOverlap(reference, candidate);
+    const tokenCoverage = this.calculateTokenCoverage(reference, candidate);
 
     return {
       similarity,
-      threshold: this.threshold,
-      isConfident,
-      algorithm: this.algorithm,
-      message: isConfident 
-        ? `✓ Match confiante (${similarity}% >= ${this.threshold}%)`
-        : `✗ Match abaixo do threshold (${similarity}% < ${this.threshold}%)`
+      tokenOverlap,
+      tokenCoverage,
+      weighted: Math.round(
+        (similarity * 0.7) +
+        (tokenOverlap * 0.2) +
+        (tokenCoverage * 0.1)
+      )
     };
   }
 
-  /**
-   * Normalizar string para comparação
-   */
-  _normalize(str) {
-    return str
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s]/g, '') // Remove caracteres especiais
-      .replace(/\s+/g, ' '); // Normaliza espaços
+  tokenize(value) {
+    return this._tokenize(value);
   }
 
-  /**
-   * Algoritmo Levenshtein Distance
-   * Mede quantas edições são necessárias para transformar uma string em outra
-   */
+  isConfident(str1, str2) {
+    return this.calculateSimilarity(str1, str2) >= this.threshold;
+  }
+
+  getDetailedScore(str1, str2) {
+    const composite = this.getCompositeScore(str1, str2);
+    const isConfident = composite.weighted >= this.threshold;
+
+    return {
+      similarity: composite.similarity,
+      tokenOverlap: composite.tokenOverlap,
+      tokenCoverage: composite.tokenCoverage,
+      composite: composite.weighted,
+      threshold: this.threshold,
+      isConfident,
+      algorithm: this.algorithm,
+      message: isConfident
+        ? `Match confiante (${composite.weighted}% >= ${this.threshold}%)`
+        : `Match abaixo do threshold (${composite.weighted}% < ${this.threshold}%)`
+    };
+  }
+
+  _normalize(str) {
+    return String(str)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/&/g, ' e ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  _tokenize(str) {
+    return this._normalize(str)
+      .split(' ')
+      .map(token => token.trim())
+      .filter(token => token.length > 1);
+  }
+
   _levenshteinSimilarity(s1, s2) {
     const maxLen = Math.max(s1.length, s2.length);
     if (maxLen === 0) return 1;
@@ -120,14 +164,9 @@ class FuzzyMatcher {
     return matrix[s2.length][s1.length];
   }
 
-  /**
-   * Algoritmo Jaro-Winkler
-   * Melhor para nomes e strings curtas
-   */
   _jaroWinklerSimilarity(s1, s2) {
     const jaro = this._jaroSimilarity(s1, s2);
 
-    // Prefix bonus (até 4 caracteres)
     let prefix = 0;
     for (let i = 0; i < Math.min(s1.length, s2.length, 4); i++) {
       if (s1[i] === s2[i]) prefix++;
@@ -141,14 +180,13 @@ class FuzzyMatcher {
     if (s1.length === 0 && s2.length === 0) return 1;
     if (s1.length === 0 || s2.length === 0) return 0;
 
-    const matchDistance = Math.max(s1.length, s2.length) / 2 - 1;
+    const matchDistance = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
     const s1Matches = new Array(s1.length).fill(false);
     const s2Matches = new Array(s2.length).fill(false);
 
     let matches = 0;
     let transpositions = 0;
 
-    // Encontrar matches
     for (let i = 0; i < s1.length; i++) {
       const start = Math.max(0, i - matchDistance);
       const end = Math.min(i + matchDistance + 1, s2.length);
@@ -164,7 +202,6 @@ class FuzzyMatcher {
 
     if (matches === 0) return 0;
 
-    // Contar transposições
     let k = 0;
     for (let i = 0; i < s1.length; i++) {
       if (!s1Matches[i]) continue;
@@ -181,10 +218,6 @@ class FuzzyMatcher {
     );
   }
 
-  /**
-   * Algoritmo Cosine Similarity
-   * Compara vetores de caracteres
-   */
   _cosineSimilarity(s1, s2) {
     const profile1 = this._getCharacterProfile(s1);
     const profile2 = this._getCharacterProfile(s2);
@@ -193,12 +226,12 @@ class FuzzyMatcher {
     let norm1 = 0;
     let norm2 = 0;
 
-    // Calcular produto escalar e normas
     const allKeys = new Set([...Object.keys(profile1), ...Object.keys(profile2)]);
 
     for (const key of allKeys) {
       const val1 = profile1[key] || 0;
       const val2 = profile2[key] || 0;
+
       dotProduct += val1 * val2;
       norm1 += val1 * val1;
       norm2 += val2 * val2;

@@ -1,20 +1,17 @@
-const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
 const logger = require('../utils/logger');
 
 class PlexDBAPI {
   constructor(dbPath) {
-    this.name = 'plexdb';
-    this.source = 'plexdb';
     this.originalDbPath = dbPath;
-    // Cria um nome único para esta execução
-    this.tempDbPath = path.join('/tmp', `plex_enricher_${Date.now()}.db`);
+    this.tempDbPath = path.join(os.tmpdir(), `plex_${Date.now()}.db`);
     this.db = null;
     this.initialized = false;
   }
 
-  // FASE 1: Preparação (Chamado no início do script)
   async initialize() {
     if (this.initialized) return;
 
@@ -23,48 +20,62 @@ class PlexDBAPI {
         throw new Error(`Arquivo de banco Plex não encontrado: ${this.originalDbPath}`);
       }
 
-      logger.info(`PlexDB: Copiando banco de dados para TEMP (Isso é feito 1 vez)...`);
-      // A cópia pesada acontece AQUI
+      logger.info('PlexDB: Copiando banco de dados para TEMP (feito uma vez por execução)...');
       fs.copyFileSync(this.originalDbPath, this.tempDbPath);
 
-      // Abre a conexão persistente
       this.db = new sqlite3.Database(this.tempDbPath, sqlite3.OPEN_READONLY);
       this.initialized = true;
-      logger.info('PlexDB: Banco carregado e pronto para consultas ultrarrápidas.');
-
+      logger.info('PlexDB: Banco carregado e pronto para consultas.');
     } catch (error) {
       logger.error(`PlexDB Init Error: ${error.message}`);
       this.initialized = false;
     }
   }
 
-  // FASE 2: Consulta (Chamado milhares de vezes)
   async enrichProgram(title, year = null) {
-    // Se por acaso não inicializou, tenta agora (fallback)
     if (!this.initialized || !this.db) {
       await this.initialize();
       if (!this.db) return null;
     }
 
-    return new Promise((resolve, reject) => {
-      // Query otimizada para pegar apenas Filmes(1) e Séries(2)
+    return new Promise((resolve) => {
+      const normalizedTitle = title.toLowerCase();
+      const exactMatch = normalizedTitle;
+      const fuzzyMatch = `%${title}%`;
+      const yearValue = Number.isInteger(year) ? year : 0;
+
       const query = `
-        SELECT title, year, tags_genre, summary, hash
+        SELECT
+          title,
+          year,
+          tags_genre,
+          summary,
+          hash,
+          metadata_type,
+          CASE
+            WHEN lower(title) = ? THEN 3
+            WHEN lower(title) LIKE ? THEN 2
+            ELSE 1
+          END AS match_rank,
+          CASE
+            WHEN year IS NOT NULL AND ? > 0 THEN ABS(year - ?)
+            ELSE 999
+          END AS year_distance
         FROM metadata_items
         WHERE title LIKE ?
-        AND library_section_id > 0
-        AND metadata_type IN (1, 2)
-        ORDER BY year DESC LIMIT 1
+          AND library_section_id > 0
+          AND metadata_type IN (1, 2)
+        ORDER BY match_rank DESC, year_distance ASC, LENGTH(title) ASC
+        LIMIT 1
       `;
 
-      this.db.get(query, [`%${title}%`], (err, row) => {
-        if (err) {
+      this.db.get(query, [exactMatch, `%${normalizedTitle}%`, yearValue, yearValue, fuzzyMatch], (err, row) => {
+        if (err || !row) {
           resolve(null);
-        } else if (row) {
-          resolve(this._formatResult(row));
-        } else {
-          resolve(null);
+          return;
         }
+
+        resolve(this._formatResult(row));
       });
     });
   }
@@ -78,15 +89,15 @@ class PlexDBAPI {
       image: null,
       genres: row.tags_genre ? row.tags_genre.split('|') : [],
       year: row.year,
-      rating: null,
-      type: 'movie'
+      score: null,
+      contentRating: null,
+      type: row.metadata_type === 2 ? 'series' : 'movie'
     };
   }
 
-  // FASE 3: Limpeza (Chamado no final do script)
   shutdown() {
     if (this.db) {
-      this.db.close((err) => {
+      this.db.close(() => {
         try {
           if (fs.existsSync(this.tempDbPath)) {
             fs.unlinkSync(this.tempDbPath);
