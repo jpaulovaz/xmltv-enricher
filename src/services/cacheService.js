@@ -7,7 +7,8 @@ class CacheService {
   constructor(config) {
     this.enabled = config.cache.enabled;
     this.ttlMs = config.cache.ttlHours * 60 * 60 * 1000;
-
+    
+    // Usar diretório data/ para compatibilidade com Docker
     const dataDir = path.join(process.cwd(), 'data');
     const fs = require('fs');
     if (!fs.existsSync(dataDir)) {
@@ -15,6 +16,8 @@ class CacheService {
     }
     this.dbPath = path.join(dataDir, 'cache_enricher.db');
     this.db = null;
+
+    // Promessa que resolve quando o banco estiver pronto para uso
     this.initPromise = Promise.resolve();
 
     if (this.enabled) {
@@ -23,13 +26,14 @@ class CacheService {
   }
 
   _initDb() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {
           logger.error(`Cache: Erro ao abrir banco SQLite: ${err.message}`);
           this.enabled = false;
-          resolve();
+          resolve(); // Resolve mesmo com erro para não travar, mas desabilita cache
         } else {
+          // Serializa as operações de criação para garantir ordem
           this.db.serialize(() => {
             this.db.run(`
               CREATE TABLE IF NOT EXISTS cache (
@@ -39,13 +43,13 @@ class CacheService {
               )
             `);
 
-            this.db.run('CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp)', (indexErr) => {
-              if (indexErr) {
-                logger.error(`Cache: Erro ao criar tabela/índice: ${indexErr.message}`);
+            this.db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp)`, (err) => {
+              if (err) {
+                logger.error(`Cache: Erro ao criar tabela/índice: ${err.message}`);
               } else {
                 logger.info(`Cache persistente conectado e pronto: ${this.dbPath}`);
               }
-              resolve();
+              resolve(); // Só libera o uso após terminar de criar tabelas
             });
           });
         }
@@ -53,16 +57,21 @@ class CacheService {
     });
   }
 
-  async get(title, year, context = {}) {
+  async get(title, year) {
     if (!this.enabled) return null;
+
+    // Espera o banco estar pronto antes de consultar
     await this.initPromise;
+
     if (!this.db) return null;
 
-    const key = generateCacheKey(title, year, context);
+    const key = generateCacheKey(title, year);
 
     return new Promise((resolve) => {
       this.db.get('SELECT data, timestamp FROM cache WHERE key = ?', [key], (err, row) => {
         if (err) {
+          // Se der erro (ex: tabela sumiu), loga e retorna null sem crashar
+          // logger.debug(`Cache GET Error: ${err.message}`);
           resolve(null);
           return;
         }
@@ -75,24 +84,27 @@ class CacheService {
         if (Date.now() - row.timestamp > this.ttlMs) {
           this.db.run('DELETE FROM cache WHERE key = ?', [key]);
           resolve(null);
-          return;
-        }
-
-        try {
-          resolve(JSON.parse(row.data));
-        } catch (e) {
-          resolve(null);
+        } else {
+          try {
+            const data = JSON.parse(row.data);
+            resolve(data);
+          } catch (e) {
+            resolve(null);
+          }
         }
       });
     });
   }
 
-  async set(title, year, data, context = {}) {
+  async set(title, year, data) {
     if (!this.enabled) return;
+
+    // Espera inicialização também no SET
     await this.initPromise;
+
     if (!this.db) return;
 
-    const key = generateCacheKey(title, year, context);
+    const key = generateCacheKey(title, year);
     const json = JSON.stringify(data);
     const now = Date.now();
 

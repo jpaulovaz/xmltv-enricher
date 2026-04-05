@@ -25,6 +25,7 @@ class OMDbAPI {
         return null;
       }
 
+      // Tratamento manual de gêneros para evitar erro de função inexistente
       const genresArray = data.Genre && data.Genre !== 'N/A'
         ? data.Genre.split(',').map(g => g.trim())
         : [];
@@ -37,8 +38,7 @@ class OMDbAPI {
         image: data.Poster !== 'N/A' ? data.Poster : null,
         genres: genresArray,
         year: parseInt(data.Year, 10),
-        score: data.imdbRating && data.imdbRating !== 'N/A' ? Number(data.imdbRating) : null,
-        contentRating: data.Rated && data.Rated !== 'N/A' ? data.Rated : null,
+        rating: data.imdbRating,
         type: data.Type === 'series' ? 'series' : 'movie'
       };
     } catch (error) {

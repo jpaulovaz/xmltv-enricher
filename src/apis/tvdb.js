@@ -170,8 +170,7 @@ class TVDbAPI {
         image: details.image,
         genres: details.genres?.map(g => g.name) || [],
         year: firstAired ? new Date(firstAired).getFullYear() : null,
-        contentRating: details.contentRating,
-        score: null,
+        rating: details.contentRating,
         type: 'series'
       };
     } catch (error) {

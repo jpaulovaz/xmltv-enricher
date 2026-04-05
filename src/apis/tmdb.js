@@ -10,7 +10,7 @@ class TMDbAPI {
   constructor(apiKey) {
     this.apiKey = apiKey;
     this.genreCache = null;
-    this.language = config.api.language || 'pt-BR';
+    this.language = config.api.language || 'pt-BR'; // Centralizado aqui
   }
 
   async getGenres() {
@@ -66,33 +66,37 @@ class TMDbAPI {
       return [];
     }
   }
-
+  // --- NOVO MÉTODO PARA MANUAL OVERRIDE ---
   async enrichById(id, type = 'movie') {
     try {
-      const details = type === 'movie'
-        ? await this.getMovieDetails(id)
-        : await this.getTVDetails(id);
+      let details;
+      if (type === 'movie') {
+        details = await this.getMovieDetails(id);
+      } else {
+        details = await this.getTVDetails(id);
+      }
 
-      if (!details) return null;
-
-      return {
-        title: details.title || details.name,
-        original_title: details.original_title || details.original_name,
-        year: (details.release_date || details.first_air_date || '').split('-')[0],
-        image: details.poster_path ? `${IMAGE_BASE}${details.poster_path}` : null,
-        description: details.overview,
-        score: details.vote_average,
-        genres: details.genres ? details.genres.map(g => g.name) : [],
-        source: 'tmdb',
-        type,
-        contentRating: null
-      };
+      if (details) {
+        return {
+          title: details.title || details.name,
+          original_title: details.original_title || details.original_name,
+          year: (details.release_date || details.first_air_date || '').split('-')[0],
+          // Garantimos o IMAGE_BASE aqui
+          image: details.poster_path ? `${IMAGE_BASE}${details.poster_path}` : null,
+          description: details.overview,
+          rating: details.vote_average,
+          genres: details.genres ? details.genres.map(g => g.name) : [],
+          source: 'tmdb', // Mantenha minúsculo para bater com os ícones/stats
+          type: type
+        };
+      }
+      return null;
     } catch (error) {
       logger.error(`[TMDb] Erro ao buscar por ID ${id}: ${error.message}`);
       return null;
     }
   }
-
+  // --- AQUI ESTÁ A MUDANÇA PARA OS ALIASES ---
   async getMovieDetails(movieId) {
     try {
       const url = `${API_BASE}/movie/${movieId}`;
@@ -100,7 +104,7 @@ class TMDbAPI {
         params: {
           api_key: this.apiKey,
           language: this.language,
-          append_to_response: 'alternative_titles'
+          append_to_response: 'alternative_titles' // PUXA OS NOMES ALTERNATIVOS
         },
         timeout: 10000
       });
@@ -121,7 +125,7 @@ class TMDbAPI {
         params: {
           api_key: this.apiKey,
           language: this.language,
-          append_to_response: 'alternative_titles'
+          append_to_response: 'alternative_titles' // PUXA OS NOMES ALTERNATIVOS
         },
         timeout: 10000
       });
@@ -154,7 +158,7 @@ class TMDbAPI {
         type = 'series';
       }
 
-      if (!details) return null;
+      if (!details || !details.poster_path) return null;
 
       const genres = details.genres?.map(g => g.name) || [];
       const releaseDate = details.release_date || details.first_air_date;
@@ -163,15 +167,13 @@ class TMDbAPI {
         source: 'tmdb',
         id: details.id,
         title: details.title || details.name,
-        original_title: details.original_title || details.original_name,
-        alternative_titles: details.alternative_titles,
+        original_title: details.original_title || details.original_name, // ADICIONADO
+        alternative_titles: details.alternative_titles, // ADICIONADO
         description: details.overview,
-        image: details.poster_path ? `${IMAGE_BASE}${details.poster_path}` : null,
+        image: `${IMAGE_BASE}${details.poster_path}`,
         genres,
         year: releaseDate ? new Date(releaseDate).getFullYear() : null,
-        score: details.vote_average,
-        type,
-        contentRating: null
+        type
       };
     } catch (error) {
       logger.error(`TMDb: Erro ao enriquecer programa "${title}" - ${error.message}`);

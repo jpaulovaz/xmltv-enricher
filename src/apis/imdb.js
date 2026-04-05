@@ -68,8 +68,7 @@ class IMDbAPI {
                 image: highResImage,
                 genres: [],        // Não retorna gêneros detalhados
                 year: best.y,
-                score: null,
-                contentRating: null,
+                rating: null,
                 type: best.q === 'feature' ? 'movie' : 'series'
             };
 
