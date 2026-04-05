@@ -6,16 +6,10 @@ let dictionaryRegex = null;
 
 const TECHNICAL_SUFFIX_REGEX = /(?:\s*(?:\(|\[)?(?:HD|FHD|UHD|4K|3D|DUBLADO|LEGENDADO|DUAL[\s-]?A[ÁA]UDIO|AUDIO[\s-]?DESCRI[CÇ][AÃ]O|REPRISE|ESTREIA)(?:\)|\])?)+$/i;
 const DECORATIVE_TRAILING_SEGMENT_REGEX = /^(?:\d{1,2}[ªºa]?\s*temp(?:orada|\.)?.*|t\s*\d+\s*e\s*\d+.*|s\s*\d+\s*e\s*\d+.*|ep(?:is[oó]dio|\.)?\s*\d+.*|cap(?:[ií]tulo|\.)?\s*\d+.*|ao vivo|reprise|estreia|compacto|melhores momentos|edi[cç][aã]o especial|dia\s*\d{1,2}\/\d{1,2})$/i;
-const MATCHUP_REGEX = /\b[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9'.&\- ]{1,40}\s+[xX]\s+[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9'.&\- ]{1,40}\b/;
-const SPORTS_TITLE_KEYWORDS_REGEX = /\b(libertadores|sulamericana|champions|premier\s+league|nba|nfl|mlb|nhl|ufc|rugby|basquete|futebol|volei|v[oô]lei|tenis|t[êe]nis|formula\s*1|f1|copa\s+do\s+rei|copa\s+do\s+brasil|brasileir[aã]o|paulist[aã]o|carioc[aã]o|superliga|conmebol|skate|esporte|melhores\s+momentos|pr[eé]-?jogo|p[oó]s-?jogo|vt\s*-|tournament\s+basketball)\b/i;
-const SPORTS_WEAK_TITLE_KEYWORDS_REGEX = /\b(jogo|rodada|compacto)\b/i;
-const NEWS_TITLE_KEYWORDS_REGEX = /\b(jornal|boletim|news|not[ií]cias?|urgente|plant[aã]o|live\s+cnn|agora\s+cnn|cnn\s*360)\b/i;
-const NEWS_WEAK_TITLE_KEYWORDS_REGEX = /\b(debate|mercado|edi[cç][aã]o|prime\s+time|hora\s*h|novo\s+dia|jovem\s+pan)\b/i;
-const LIVE_TITLE_REGEX = /\bao\s+vivo\b/i;
-const GENERIC_BLOCK_REGEX = /^(?:programa[cç][aã]o(?:\s+[\w&+.-]+)?|intervalo|encerramento|missa|culto|leil[aã]o|hor[oó]scopo|dia\s+\d{1,2}\/\d{1,2}\b|hoje\s+a\s+partir\s+das\s+\d{1,2}:\d{2}\b|amanh[aã]\s+a\s+partir\s+das\s+\d{1,2}:\d{2}\b)\b/i;
-const MATCHUP_CONTEXT_PREFIX_REGEX = /^(?:dia\s+\d{1,2}\/\d{1,2}|hoje\s+a\s+partir|amanh[aã]\s+a\s+partir)\b/i;
-const SPORTS_CHANNEL_REGEX = /\b(premiere|sportv|espn|bandsports?|combate|xsports?|fox\s+sports|paramount\+\s*\d+|sportynet)\b/i;
-const NEWS_CHANNEL_REGEX = /\b(cnn|globonews|record\s+news|jp\s*news|band\s*news|sic\s+not[ií]cias|jovem\s+pan\s+news|news)\b/i;
+const MATCHUP_REGEX = /[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9'.&\- ]{1,40}\s+[xX]\s+[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9'.&\- ]{1,40}/;
+const SPORTS_KEYWORDS_REGEX = /\b(libertadores|sulamericana|champions|premier\s+league|nba|nfl|mlb|nhl|ufc|rugby|basquete|futebol|volei|v[oô]lei|tenis|t[êe]nis|formula\s*1|f1|copa\s+do\s+rei|copa\s+do\s+brasil|brasileir[aã]o|paulist[aã]o|carioc[aã]o|superliga|sportv|premiere|conmebol)\b/i;
+const NEWS_KEYWORDS_REGEX = /\b(ao\s+vivo|jornal|boletim|news|not[ií]cias?|debate|mercado|meio\s+do\s+dia|manh[aã]|urgente|plant[aã]o|edi[cç][aã]o)\b/i;
+const GENERIC_BLOCK_REGEX = /^(?:programa[cç][aã]o|intervalo|encerramento|missa|culto|leil[aã]o|hor[oó]scopo|dia\s+\d{1,2}\/\d{1,2})\b/i;
 const SERIES_HINT_CATEGORY_REGEX = /\b(soap|series|s[eé]rie|kids|children|anime)\b/i;
 
 function buildDictionaryRegex(content) {
@@ -313,53 +307,24 @@ const convertToXmltvNs = (season, episode) => {
 const detectProgrammeContext = (programme, channelName = '') => {
   const rawTitle = normalizeWhitespace(decodeHtmlEntities(getProgrammeTextField(programme?.title)));
   const normalizedTitle = normalizeTitle(rawTitle);
-  const normalizedChannel = normalizeTitle(channelName || '');
   const categories = getProgrammeCategories(programme);
   const normalizedCategories = categories.map(normalizeTitle);
   const epInfo = parseEpisodeInfo(rawTitle);
   const hasExistingEpisodeNum = Array.isArray(programme?.['episode-num']) && programme['episode-num'].length > 0;
   const hasSubTitle = Boolean(getProgrammeTextField(programme?.['sub-title']));
-  const hasStructuredEpisodeSignal = Boolean(epInfo || hasExistingEpisodeNum || hasSubTitle);
-  const isSportsChannel = SPORTS_CHANNEL_REGEX.test(channelName || '');
-  const isNewsChannel = NEWS_CHANNEL_REGEX.test(channelName || '');
-  const sameAsChannel = Boolean(normalizedTitle) && normalizedTitle === normalizedChannel;
-  const hasMatchupContext = MATCHUP_CONTEXT_PREFIX_REGEX.test(rawTitle) || LIVE_TITLE_REGEX.test(normalizedTitle) || isSportsChannel;
-  const hasSportsKeywordContext = isSportsChannel || LIVE_TITLE_REGEX.test(normalizedTitle) || MATCHUP_CONTEXT_PREFIX_REGEX.test(rawTitle);
 
   let skipReason = null;
-  let skipEvidence = null;
 
   if (GENERIC_BLOCK_REGEX.test(rawTitle)) {
     skipReason = 'generic_schedule';
-    skipEvidence = 'title_generic_block';
-  } else if (!hasStructuredEpisodeSignal && MATCHUP_REGEX.test(rawTitle) && hasMatchupContext) {
+  } else if (MATCHUP_REGEX.test(rawTitle) || normalizedCategories.some(cat => cat.includes('sport')) || SPORTS_KEYWORDS_REGEX.test(normalizedTitle)) {
     skipReason = 'sports_or_live_event';
-    skipEvidence = 'title_matchup';
-  } else if (!hasStructuredEpisodeSignal && SPORTS_TITLE_KEYWORDS_REGEX.test(normalizedTitle) && hasSportsKeywordContext) {
-    skipReason = 'sports_or_live_event';
-    skipEvidence = 'title_sports_keyword';
-  } else if (!hasStructuredEpisodeSignal && SPORTS_WEAK_TITLE_KEYWORDS_REGEX.test(normalizedTitle) && isSportsChannel) {
-    skipReason = 'sports_or_live_event';
-    skipEvidence = 'sports_channel_keyword';
-  } else if (!hasStructuredEpisodeSignal && sameAsChannel && isSportsChannel) {
-    skipReason = 'sports_or_live_event';
-    skipEvidence = 'channel_placeholder';
-  } else if (!hasStructuredEpisodeSignal && LIVE_TITLE_REGEX.test(normalizedTitle) && isSportsChannel) {
-    skipReason = 'sports_or_live_event';
-    skipEvidence = 'sports_live_title';
   } else if (
-    !hasStructuredEpisodeSignal &&
-    !extractYearFromTitle(rawTitle) &&
-    (NEWS_TITLE_KEYWORDS_REGEX.test(normalizedTitle) || (NEWS_WEAK_TITLE_KEYWORDS_REGEX.test(normalizedTitle) && isNewsChannel) || (LIVE_TITLE_REGEX.test(normalizedTitle) && isNewsChannel))
+    (normalizedCategories.some(cat => cat.includes('news')) || normalizedCategories.some(cat => cat.includes('talk show')) || NEWS_KEYWORDS_REGEX.test(normalizedTitle)) &&
+    !epInfo &&
+    !extractYearFromTitle(rawTitle)
   ) {
     skipReason = 'news_or_live_block';
-    if (NEWS_TITLE_KEYWORDS_REGEX.test(normalizedTitle)) {
-      skipEvidence = 'title_news_keyword';
-    } else if (NEWS_WEAK_TITLE_KEYWORDS_REGEX.test(normalizedTitle) && isNewsChannel) {
-      skipEvidence = 'news_channel_keyword';
-    } else {
-      skipEvidence = 'news_live_title';
-    }
   }
 
   let expectedType = null;
@@ -375,7 +340,6 @@ const detectProgrammeContext = (programme, channelName = '') => {
     episodeInfo: epInfo,
     shouldSearch: !skipReason,
     skipReason,
-    skipEvidence,
     channelName: channelName || ''
   };
 };

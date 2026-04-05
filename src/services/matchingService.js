@@ -117,15 +117,13 @@ class MatchingService {
     }
 
     if (!context.shouldSearch) {
-      const skipLabel = context.skipEvidence ? `${context.skipReason}:${context.skipEvidence}` : context.skipReason;
-      logger.info(`Ignorando busca para "${originalTitle}" (${skipLabel})`);
-      this._writeToAudit(channelName, originalTitle, anchorTitle, 0, skipLabel, 'SKIP');
+      logger.info(`Ignorando busca para "${originalTitle}" (${context.skipReason})`);
+      this._writeToAudit(channelName, originalTitle, anchorTitle, 0, context.skipReason, 'SKIP');
       const placeholderProg = this._applySmartPlaceholder(programme, activePlaceholder);
       placeholderProg._enrichmentSource = 'placeholder';
       placeholderProg._wasEnriched = false;
       placeholderProg._matchOutcome = 'skipped';
       placeholderProg._skipReason = context.skipReason;
-      placeholderProg._skipEvidence = context.skipEvidence || null;
       placeholderProg._eligibleForMatching = false;
       return placeholderProg;
     }
